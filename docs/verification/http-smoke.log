@@ -1,0 +1,34 @@
+PASS 01 admin session login
+PASS 02 passenger session login
+PASS 03 driver session login
+PASS 04 confirmed demo reset
+PASS 05 anonymous access rejected
+PASS 06 passenger cannot access admin API
+PASS 07 admin cannot impersonate driver
+PASS 08 reverse journey rejected
+PASS 09 write without CSRF rejected
+PASS 10 A: persisted WAITING request C to D
+PASS 11 A: duplicate request rejected
+PASS 12 A: admin C demand increased
+PASS 13 B: A to C ETA uses 7-minute history
+PASS 14 D: skipped station rejected
+PASS 15 D: excessive alighting rejected
+PASS 16 D: overload rejected
+PASS 17 D: rejected updates rolled back
+PASS 18 B: arrival B updates occupancy 10 - 1 + 2 = 11
+PASS 19 B: latest B report recalculates ETA to C
+PASS 20 B: driver does not auto-board passenger
+PASS 21 B: admin vehicle data synchronized
+PASS 22 C: passenger confirms boarding
+PASS 23 C: active demand decreased to zero
+PASS 24 C: history preserved
+PASS 25 cancel request ends demand
+PASS 26 passenger session login
+PASS 27 passenger session login
+PASS 28 passenger session login
+PASS 29 passenger session login
+PASS 30 D: real MySQL concurrent creation permits exactly one active request
+PASS 31 final active demand cleared
+PASS 32 logout revokes session
+
+32 real-HTTP assertions passed. Demo vehicle remains at B with occupancy 11/20.

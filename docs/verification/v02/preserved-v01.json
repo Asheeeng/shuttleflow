@@ -1,0 +1,32 @@
+[
+  {
+    "file": "backend/src/main/resources/db/migration/V1__schema.sql",
+    "unchanged": true,
+    "sha256": "82517af2fb69953ef816769ef9bffd857656c8becefac75d387e3ca6b6a969bc"
+  },
+  {
+    "file": "backend/src/test/java/edu/gzu/shuttle/BusinessIntegrationTest.java",
+    "unchanged": true,
+    "sha256": "ea27ed57cc22b873dc23af842f67e5168c6ef0697d5c561ca474191d08eec46f"
+  },
+  {
+    "file": "backend/src/test/java/edu/gzu/shuttle/EtaServiceTest.java",
+    "unchanged": true,
+    "sha256": "fc7d0c32260382f42c938318aca219f2fd44a6e3adc3a1c341c49f212f9891c5"
+  },
+  {
+    "file": "backend/src/test/java/edu/gzu/shuttle/ProductionIsolationTest.java",
+    "unchanged": true,
+    "sha256": "ab2f8051bbaf63db70e21a4bfa314ca5f7a913f4961e72334cfbaf8958bd1e11"
+  },
+  {
+    "file": "frontend/tests/demo.spec.js",
+    "unchanged": true,
+    "sha256": "cfd2889035cf72b6c01e4bb42fa1f90a844c50b48d7a4f4703986c4467de7c05"
+  },
+  {
+    "file": "scripts/smoke.py",
+    "unchanged": true,
+    "sha256": "fa9f2c2f51b3c5cffeb2d79fcbdd0272a329e438425855260064104f2f430170"
+  }
+]

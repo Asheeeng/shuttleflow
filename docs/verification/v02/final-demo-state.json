@@ -1,0 +1,266 @@
+{
+  "source": {
+    "scenario": "课间高峰模拟",
+    "source": "本地确定性演示夹具；候车人数、车内人数、司机下客计划、车辆位置、准备时间和站间耗时均为模拟，不代表贵州大学真实数据",
+    "cStationDemand": 30,
+    "bStationDemand": 2,
+    "expectedCService": 12,
+    "expectedCGap": 18,
+    "createdAt": "2026-11-12T10:59:06.930853Z"
+  },
+  "overview": {
+    "runningVehicles": 2,
+    "activeRequests": 3,
+    "waitingPeople": 32,
+    "recentArrivals": 1,
+    "requestStates": {
+      "WAITING": 3,
+      "BOARDED": 0,
+      "CANCELLED": 0,
+      "EXPIRED": 0
+    },
+    "updatedAt": "2026-11-12T10:59:06.951732Z",
+    "demoResetEnabled": true
+  },
+  "fleet": [
+    {
+      "vehicleId": 1,
+      "vehicleCode": "DEMO-01",
+      "capacity": 20,
+      "serviceDate": "2026-11-12",
+      "status": "RUNNING",
+      "driverId": 2,
+      "driverName": "演示司机",
+      "routeId": 1,
+      "routeName": "A线路 · 校园演示线",
+      "stagingStopId": 1,
+      "stagingStopName": "A站",
+      "readyInSeconds": 60,
+      "reason": "基础演示：A站人工初始上报",
+      "updatedAt": "2026-11-12T10:59:06.919784Z"
+    },
+    {
+      "vehicleId": 2,
+      "vehicleCode": "DEMO-02",
+      "capacity": 20,
+      "serviceDate": "2026-11-12",
+      "status": "STANDBY",
+      "driverId": 4,
+      "driverName": "备勤司机 · 林师傅",
+      "routeId": 1,
+      "routeName": "A线路 · 校园演示线",
+      "stagingStopId": 1,
+      "stagingStopName": "A站",
+      "readyInSeconds": 60,
+      "reason": "演示备勤车辆，可通过辅助调度启动",
+      "updatedAt": "2026-11-12T10:59:06.920494Z"
+    },
+    {
+      "vehicleId": 3,
+      "vehicleCode": "DEMO-03",
+      "capacity": 20,
+      "serviceDate": "2026-11-12",
+      "status": "RUNNING",
+      "driverId": 5,
+      "driverName": "支线司机 · 陈师傅",
+      "routeId": 1,
+      "routeName": "A线路 · 校园演示线",
+      "stagingStopId": 2,
+      "stagingStopName": "B站",
+      "readyInSeconds": 60,
+      "reason": "演示初始位置：B站，16/20人",
+      "updatedAt": "2026-11-12T10:59:06.925647Z"
+    },
+    {
+      "vehicleId": 4,
+      "vehicleCode": "DEMO-04",
+      "capacity": 20,
+      "serviceDate": "2026-11-12",
+      "status": "STANDBY",
+      "driverId": 6,
+      "driverName": "备勤司机 · 王师傅",
+      "routeId": 1,
+      "routeName": "A线路 · 校园演示线",
+      "stagingStopId": 1,
+      "stagingStopName": "A站",
+      "readyInSeconds": 120,
+      "reason": "高峰演示备勤车辆，准备时间2分钟",
+      "updatedAt": "2026-11-12T10:59:06.927109Z"
+    },
+    {
+      "vehicleId": 5,
+      "vehicleCode": "DEMO-05",
+      "capacity": 20,
+      "serviceDate": "2026-11-12",
+      "status": "UNAVAILABLE",
+      "driverId": null,
+      "driverName": "未绑定",
+      "routeId": 1,
+      "routeName": "A线路 · 校园演示线",
+      "stagingStopId": 1,
+      "stagingStopName": "A站",
+      "readyInSeconds": 60,
+      "reason": "演示不可用车辆：例行检修，不参与推荐",
+      "updatedAt": "2026-11-12T10:59:06.927849Z"
+    }
+  ],
+  "board": {
+    "alerts": [
+      {
+        "routeId": 1,
+        "routeName": "A线路 · 校园演示线",
+        "stopId": 1,
+        "stopName": "A站",
+        "stopOrder": 0,
+        "demand": 0,
+        "expectedCapacity": 0,
+        "allocated": 0,
+        "gap": 0,
+        "pendingCapacity": 0,
+        "uncoveredGap": 0,
+        "level": "NORMAL",
+        "threshold": 5,
+        "vehicles": [],
+        "excluded": [],
+        "horizonMinutes": 10,
+        "updatedAt": "2026-11-12T10:59:06.935410Z",
+        "source": "有效候车请求 + 人工到站/载客上报 + 司机下客计划；演示耗时仅用于规则估算"
+      },
+      {
+        "routeId": 1,
+        "routeName": "A线路 · 校园演示线",
+        "stopId": 2,
+        "stopName": "B站",
+        "stopOrder": 1,
+        "demand": 2,
+        "expectedCapacity": 3,
+        "allocated": 2,
+        "gap": 0,
+        "pendingCapacity": 0,
+        "uncoveredGap": 0,
+        "level": "NORMAL",
+        "threshold": 5,
+        "vehicles": [
+          {
+            "vehicleId": 1,
+            "vehicleCode": "DEMO-01",
+            "arrivalAt": "2026-11-12T11:03:06.914302Z",
+            "beforeAlighting": 18,
+            "alighted": 1,
+            "seatsAfterAlighting": 3,
+            "boarded": 2,
+            "occupancyAfter": 19
+          }
+        ],
+        "excluded": [],
+        "horizonMinutes": 10,
+        "updatedAt": "2026-11-12T10:59:06.935410Z",
+        "source": "有效候车请求 + 人工到站/载客上报 + 司机下客计划；演示耗时仅用于规则估算"
+      },
+      {
+        "routeId": 1,
+        "routeName": "A线路 · 校园演示线",
+        "stopId": 3,
+        "stopName": "C站",
+        "stopOrder": 2,
+        "demand": 30,
+        "expectedCapacity": 12,
+        "allocated": 12,
+        "gap": 18,
+        "pendingCapacity": 0,
+        "uncoveredGap": 18,
+        "level": "HIGH",
+        "threshold": 5,
+        "vehicles": [
+          {
+            "vehicleId": 3,
+            "vehicleCode": "DEMO-03",
+            "arrivalAt": "2026-11-12T11:02:06.924040Z",
+            "beforeAlighting": 16,
+            "alighted": 3,
+            "seatsAfterAlighting": 7,
+            "boarded": 7,
+            "occupancyAfter": 20
+          },
+          {
+            "vehicleId": 1,
+            "vehicleCode": "DEMO-01",
+            "arrivalAt": "2026-11-12T11:06:06.914302Z",
+            "beforeAlighting": 19,
+            "alighted": 4,
+            "seatsAfterAlighting": 5,
+            "boarded": 5,
+            "occupancyAfter": 20
+          }
+        ],
+        "excluded": [],
+        "horizonMinutes": 10,
+        "updatedAt": "2026-11-12T10:59:06.935410Z",
+        "source": "有效候车请求 + 人工到站/载客上报 + 司机下客计划；演示耗时仅用于规则估算"
+      },
+      {
+        "routeId": 1,
+        "routeName": "A线路 · 校园演示线",
+        "stopId": 4,
+        "stopName": "D站",
+        "stopOrder": 3,
+        "demand": 0,
+        "expectedCapacity": 0,
+        "allocated": 0,
+        "gap": 0,
+        "pendingCapacity": 0,
+        "uncoveredGap": 0,
+        "level": "NORMAL",
+        "threshold": 5,
+        "vehicles": [
+          {
+            "vehicleId": 3,
+            "vehicleCode": "DEMO-03",
+            "arrivalAt": "2026-11-12T11:07:06.924040Z",
+            "beforeAlighting": 20,
+            "alighted": 0,
+            "seatsAfterAlighting": 0,
+            "boarded": 0,
+            "occupancyAfter": 20
+          }
+        ],
+        "excluded": [],
+        "horizonMinutes": 10,
+        "updatedAt": "2026-11-12T10:59:06.935410Z",
+        "source": "有效候车请求 + 人工到站/载客上报 + 司机下客计划；演示耗时仅用于规则估算"
+      }
+    ],
+    "tasks": [],
+    "suggestions": [
+      {
+        "routeId": 1,
+        "stopId": 3,
+        "stopName": "C站",
+        "gap": 18,
+        "candidates": [
+          {
+            "vehicleId": 2,
+            "vehicleCode": "DEMO-02",
+            "driverId": 4,
+            "driverName": "备勤司机 · 林师傅",
+            "availableCapacity": 20,
+            "etaSeconds": 480,
+            "estimatedArrivalAt": "2026-11-12T11:07:06.938636Z",
+            "reason": "今日待命；位于A站，准备1分钟，按同向站间耗时累计；预计余座已扣除上游候车需求并计入已核实下客计划"
+          },
+          {
+            "vehicleId": 4,
+            "vehicleCode": "DEMO-04",
+            "driverId": 6,
+            "driverName": "备勤司机 · 王师傅",
+            "availableCapacity": 20,
+            "etaSeconds": 540,
+            "estimatedArrivalAt": "2026-11-12T11:08:06.938636Z",
+            "reason": "今日待命；位于A站，准备2分钟，按同向站间耗时累计；预计余座已扣除上游候车需求并计入已核实下客计划"
+          }
+        ]
+      }
+    ],
+    "serverTime": "2026-11-12T10:59:06.943782Z"
+  }
+}

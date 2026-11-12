@@ -1,0 +1,37 @@
+{
+  "verifiedAt": "2026-11-12 17:07:33 CST",
+  "backendSuites": [
+    {
+      "name": "edu.gzu.shuttle.BusinessIntegrationTest",
+      "tests": "20",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "3.783"
+    },
+    {
+      "name": "edu.gzu.shuttle.EtaServiceTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.048"
+    },
+    {
+      "name": "edu.gzu.shuttle.ProductionIsolationTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.268"
+    }
+  ],
+  "realHttpAssertions": 32,
+  "browserTests": 2,
+  "frontendBuild": "PASS",
+  "mysql": "8.4.11",
+  "jarStartup": "PASS",
+  "restartPersistenceCountsUnchanged": true,
+  "dockerComposeConfig": "PASS",
+  "dockerComposeStartup": "NOT EXECUTED"
+}

@@ -1,0 +1,186 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< edu.gzu:campus-shuttle >-----------------------
+[INFO] Building campus-shuttle 0.2.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shuttle ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ campus-shuttle ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 26 source files with javac [debug parameters release 17] to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shuttle ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ campus-shuttle ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ campus-shuttle ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running edu.gzu.shuttle.CapacityServiceTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.080 s -- in edu.gzu.shuttle.CapacityServiceTest
+[INFO] Running edu.gzu.shuttle.EtaServiceTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in edu.gzu.shuttle.EtaServiceTest
+[INFO] Running edu.gzu.shuttle.DispatchIntegrationTest
+18:48:19.231 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [edu.gzu.shuttle.DispatchIntegrationTest]: DispatchIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+18:48:19.313 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration edu.gzu.shuttle.ShuttleApplication for test class edu.gzu.shuttle.DispatchIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-12T18:48:19.494+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.DispatchIntegrationTest    : Starting DispatchIntegrationTest using Java 17.0.18 with PID 22945 (started by suis in /Users/suis/Developer/2026-2027Works/project/campus-shuttle/backend)
+2026-11-12T18:48:19.495+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.DispatchIntegrationTest    : The following 2 profiles are active: "test", "demo"
+2026-11-12T18:48:19.787+08:00  INFO 22945 --- [campus-shuttle] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-11-12T18:48:19.819+08:00  INFO 22945 --- [campus-shuttle] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 26 ms. Found 10 JPA repository interfaces.
+2026-11-12T18:48:20.124+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-12T18:48:20.224+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:shuttle user=SA
+2026-11-12T18:48:20.225+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-12T18:48:20.250+08:00  INFO 22945 --- [campus-shuttle] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:h2:mem:shuttle (H2 2.3)
+2026-11-12T18:48:20.272+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "public"."flyway_schema_history" does not exist yet
+2026-11-12T18:48:20.274+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 3 migrations (execution time 00:00.007s)
+2026-11-12T18:48:20.277+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "public"."flyway_schema_history" ...
+2026-11-12T18:48:20.316+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": << Empty Schema >>
+2026-11-12T18:48:20.323+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "1 - schema"
+2026-11-12T18:48:20.348+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "2 - dispatch and daily fleet"
+2026-11-12T18:48:20.359+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "3 - dispatch resolution audit"
+2026-11-12T18:48:20.379+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 3 migrations to schema "public", now at version v3 (execution time 00:00.041s)
+2026-11-12T18:48:20.422+08:00  INFO 22945 --- [campus-shuttle] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-11-12T18:48:20.450+08:00  INFO 22945 --- [campus-shuttle] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-11-12T18:48:20.467+08:00  INFO 22945 --- [campus-shuttle] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-11-12T18:48:20.591+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-11-12T18:48:20.628+08:00  INFO 22945 --- [campus-shuttle] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-11-12T18:48:20.993+08:00  INFO 22945 --- [campus-shuttle] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-11-12T18:48:21.002+08:00  INFO 22945 --- [campus-shuttle] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-12T18:48:21.124+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-11-12T18:48:21.679+08:00  INFO 22945 --- [campus-shuttle] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name users
+2026-11-12T18:48:22.008+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-12T18:48:22.008+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-12T18:48:22.009+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-11-12T18:48:22.026+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.DispatchIntegrationTest    : Started DispatchIntegrationTest in 2.655 seconds (process running for 3.31)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 21, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.666 s -- in edu.gzu.shuttle.DispatchIntegrationTest
+[INFO] Running edu.gzu.shuttle.BusinessIntegrationTest
+2026-11-12T18:48:23.824+08:00  INFO 22945 --- [campus-shuttle] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration edu.gzu.shuttle.ShuttleApplication for test class edu.gzu.shuttle.BusinessIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-12T18:48:23.837+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.BusinessIntegrationTest    : Starting BusinessIntegrationTest using Java 17.0.18 with PID 22945 (started by suis in /Users/suis/Developer/2026-2027Works/project/campus-shuttle/backend)
+2026-11-12T18:48:23.837+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.BusinessIntegrationTest    : The following 2 profiles are active: "test", "demo"
+2026-11-12T18:48:23.893+08:00  INFO 22945 --- [campus-shuttle] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-11-12T18:48:23.905+08:00  INFO 22945 --- [campus-shuttle] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 11 ms. Found 10 JPA repository interfaces.
+2026-11-12T18:48:23.941+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-12T18:48:23.942+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-2 - Added connection conn10: url=jdbc:h2:mem:shuttle user=SA
+2026-11-12T18:48:23.942+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-12T18:48:23.943+08:00  INFO 22945 --- [campus-shuttle] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:h2:mem:shuttle (H2 2.3)
+2026-11-12T18:48:23.945+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 3 migrations (execution time 00:00.001s)
+2026-11-12T18:48:23.946+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 3
+2026-11-12T18:48:23.946+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-11-12T18:48:23.952+08:00  INFO 22945 --- [campus-shuttle] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-11-12T18:48:23.953+08:00  INFO 22945 --- [campus-shuttle] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-11-12T18:48:23.957+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-11-12T18:48:23.957+08:00  INFO 22945 --- [campus-shuttle] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-2)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-11-12T18:48:23.986+08:00  INFO 22945 --- [campus-shuttle] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-11-12T18:48:23.987+08:00  INFO 22945 --- [campus-shuttle] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-12T18:48:24.030+08:00  INFO 22945 --- [campus-shuttle] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name users
+2026-11-12T18:48:24.082+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-12T18:48:24.082+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-12T18:48:24.083+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-11-12T18:48:24.086+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.BusinessIntegrationTest    : Started BusinessIntegrationTest in 0.26 seconds (process running for 5.37)
+[INFO] Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.588 s -- in edu.gzu.shuttle.BusinessIntegrationTest
+[INFO] Running edu.gzu.shuttle.ProductionIsolationTest
+2026-11-12T18:48:24.412+08:00  INFO 22945 --- [campus-shuttle] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [edu.gzu.shuttle.ProductionIsolationTest]: ProductionIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-12T18:48:24.413+08:00  INFO 22945 --- [campus-shuttle] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration edu.gzu.shuttle.ShuttleApplication for test class edu.gzu.shuttle.ProductionIsolationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-12T18:48:24.431+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.ProductionIsolationTest    : Starting ProductionIsolationTest using Java 17.0.18 with PID 22945 (started by suis in /Users/suis/Developer/2026-2027Works/project/campus-shuttle/backend)
+2026-11-12T18:48:24.431+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.ProductionIsolationTest    : The following 3 profiles are active: "test", "demo", "prod"
+2026-11-12T18:48:24.477+08:00  INFO 22945 --- [campus-shuttle] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-11-12T18:48:24.482+08:00  INFO 22945 --- [campus-shuttle] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 4 ms. Found 10 JPA repository interfaces.
+2026-11-12T18:48:24.509+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2026-11-12T18:48:24.510+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-3 - Added connection conn20: url=jdbc:h2:mem:shuttle user=SA
+2026-11-12T18:48:24.510+08:00  INFO 22945 --- [campus-shuttle] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2026-11-12T18:48:24.510+08:00  INFO 22945 --- [campus-shuttle] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:h2:mem:shuttle (H2 2.3)
+2026-11-12T18:48:24.512+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 3 migrations (execution time 00:00.000s)
+2026-11-12T18:48:24.512+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 3
+2026-11-12T18:48:24.512+08:00  INFO 22945 --- [campus-shuttle] [           main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-11-12T18:48:24.517+08:00  INFO 22945 --- [campus-shuttle] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-11-12T18:48:24.517+08:00  INFO 22945 --- [campus-shuttle] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-11-12T18:48:24.520+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-11-12T18:48:24.521+08:00  INFO 22945 --- [campus-shuttle] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-3)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-11-12T18:48:24.545+08:00  INFO 22945 --- [campus-shuttle] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-11-12T18:48:24.546+08:00  INFO 22945 --- [campus-shuttle] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-12T18:48:24.584+08:00  INFO 22945 --- [campus-shuttle] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name users
+2026-11-12T18:48:24.628+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-12T18:48:24.628+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-12T18:48:24.628+08:00  INFO 22945 --- [campus-shuttle] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-11-12T18:48:24.632+08:00  INFO 22945 --- [campus-shuttle] [           main] e.gzu.shuttle.ProductionIsolationTest    : Started ProductionIsolationTest in 0.218 seconds (process running for 5.916)
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.240 s -- in edu.gzu.shuttle.ProductionIsolationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 56, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shuttle ---
+[INFO] Building jar: /Users/suis/Developer/2026-2027Works/project/campus-shuttle/backend/target/campus-shuttle-0.2.0.jar
+[INFO] 
+[INFO] --- spring-boot:3.5.7:repackage (repackage) @ campus-shuttle ---
+[INFO] Replacing main artifact /Users/suis/Developer/2026-2027Works/project/campus-shuttle/backend/target/campus-shuttle-0.2.0.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to /Users/suis/Developer/2026-2027Works/project/campus-shuttle/backend/target/campus-shuttle-0.2.0.jar.original
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.949 s
+[INFO] Finished at: 2026-11-12T18:48:25+08:00
+[INFO] ------------------------------------------------------------------------

@@ -1,0 +1,39 @@
+PASS 01 admin session login
+PASS 02 passenger session login
+PASS 03 peak simulation source explicitly labeled
+PASS 04 driver session login
+PASS 05 driver2 session login
+PASS 06 driver4 session login
+PASS 07 two-car alight-first forecast yields C demand30 / supply12 / gap18
+PASS 08 high-peak alert includes per-vehicle explanations
+PASS 09 daily fleet separates two running / two standby / one unavailable
+PASS 10 candidate ordering uses ready time and same-direction ETA
+PASS 11 passenger cannot read dispatch control board
+PASS 12 driver cannot issue admin orders
+PASS 13 concurrent admin confirmation creates one coverage reservation
+PASS 14 issued task stores explainable decision and pending state
+PASS 15 pending dispatch does not fabricate running capacity
+PASS 16 driver cannot respond to another driver order
+PASS 17 rejection escalates immediately to admin
+PASS 18 admin-confirmed retry chooses next candidate and preserves parent history
+PASS 19 same rejected order cannot be retried twice
+PASS 20 reserved vehicle cannot be changed to unavailable
+PASS 21 overcapacity load at acceptance rejected
+PASS 22 driver confirmation activates dispatch
+PASS 23 accepted vehicle is actually running in shared database
+PASS 24 acceptance is not repeatable
+PASS 25 dispatch still enforces route station sequence
+PASS 26 dispatch driver reports intermediate B station
+PASS 27 target arrival applies real occupancy transaction
+PASS 28 target arrival closes dispatch task
+PASS 29 dispatch completion never silently marks passenger requests boarded
+PASS 30 all actual vehicle loads stay within rated capacity
+PASS 31 different standby vehicles cannot reserve the same capacity gap twice in MySQL
+PASS 32 real deadline test starts a pending task
+WAIT real server deadline 2026-11-12T10:54:28.308948Z; no database clock manipulation
+PASS 33 real elapsed deadline expires and escalates task
+PASS 34 timeout releases reservation without starting vehicle
+PASS 35 late acceptance of timed-out task rejected
+PASS 36 escalated timeout can be resolved with auditable admin identity
+
+36 V0.2 real-HTTP assertions passed.

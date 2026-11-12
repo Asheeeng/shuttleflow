@@ -1,0 +1,58 @@
+CREATE TABLE vehicle_day (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY,
+ vehicle_id BIGINT NOT NULL,
+ service_date DATE NOT NULL,
+ status VARCHAR(20) NOT NULL CHECK (status IN ('RUNNING','STANDBY','UNAVAILABLE')),
+ driver_id BIGINT,
+ route_id BIGINT,
+ staging_stop_id BIGINT,
+ ready_in_seconds INT NOT NULL DEFAULT 60 CHECK (ready_in_seconds >= 0),
+ reason VARCHAR(300),
+ updated_at TIMESTAMP(6) NOT NULL,
+ UNIQUE(vehicle_id, service_date),
+ UNIQUE(driver_id, service_date),
+ FOREIGN KEY(vehicle_id) REFERENCES vehicle(id),
+ FOREIGN KEY(driver_id) REFERENCES app_user(id),
+ FOREIGN KEY(route_id) REFERENCES shuttle_route(id),
+ FOREIGN KEY(staging_stop_id) REFERENCES route_stop(id)
+);
+CREATE TABLE alighting_plan (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY,
+ task_id BIGINT NOT NULL,
+ stop_id BIGINT NOT NULL,
+ expected_alighted INT NOT NULL CHECK (expected_alighted >= 0),
+ source VARCHAR(200) NOT NULL,
+ updated_at TIMESTAMP(6) NOT NULL,
+ UNIQUE(task_id, stop_id),
+ FOREIGN KEY(task_id) REFERENCES run_task(id),
+ FOREIGN KEY(stop_id) REFERENCES route_stop(id)
+);
+CREATE TABLE dispatch_task (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY,
+ vehicle_id BIGINT NOT NULL,
+ driver_id BIGINT NOT NULL,
+ route_id BIGINT NOT NULL,
+ target_stop_id BIGINT NOT NULL,
+ created_by BIGINT NOT NULL,
+ previous_task_id BIGINT,
+ status VARCHAR(30) NOT NULL CHECK (status IN ('PENDING','ACCEPTED','REJECTED','TIMED_OUT','COMPLETED','CANCELLED')),
+ active_vehicle_id BIGINT UNIQUE,
+ reason VARCHAR(1500) NOT NULL,
+ response_note VARCHAR(300),
+ escalated BOOLEAN NOT NULL DEFAULT FALSE,
+ created_at TIMESTAMP(6) NOT NULL,
+ deadline_at TIMESTAMP(6) NOT NULL,
+ responded_at TIMESTAMP(6),
+ completed_at TIMESTAMP(6),
+ estimated_arrival_at TIMESTAMP(6) NOT NULL,
+ planned_capacity INT NOT NULL CHECK (planned_capacity > 0),
+ FOREIGN KEY(vehicle_id) REFERENCES vehicle(id),
+ FOREIGN KEY(active_vehicle_id) REFERENCES vehicle(id),
+ FOREIGN KEY(driver_id) REFERENCES app_user(id),
+ FOREIGN KEY(route_id) REFERENCES shuttle_route(id),
+ FOREIGN KEY(target_stop_id) REFERENCES route_stop(id),
+ FOREIGN KEY(created_by) REFERENCES app_user(id),
+ FOREIGN KEY(previous_task_id) REFERENCES dispatch_task(id),
+ CHECK ((status IN ('PENDING','ACCEPTED') AND active_vehicle_id IS NOT NULL AND active_vehicle_id=vehicle_id) OR (status NOT IN ('PENDING','ACCEPTED') AND active_vehicle_id IS NULL))
+);
+CREATE INDEX idx_dispatch_deadline ON dispatch_task(status, deadline_at);

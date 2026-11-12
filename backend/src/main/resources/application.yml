@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: campus-shuttle
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3307/campus_shuttle?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true}
+    username: ${DB_USERNAME:shuttle}
+    password: ${DB_PASSWORD}
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  jackson:
+    time-zone: UTC
+server:
+  address: 127.0.0.1
+  port: 8080
+  servlet:
+    session:
+      timeout: 2h
+      cookie:
+        http-only: true
+        same-site: lax
+app:
+  request-ttl: PT10M
+  report-ttl: PT15M
+  peak-threshold: 5
+  capacity-horizon: PT10M
+  dispatch-offer-ttl: ${DISPATCH_OFFER_TTL:PT2M}
+  dispatch-scan-ms: 5000

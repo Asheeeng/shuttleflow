@@ -1,0 +1,17 @@
+
+> campus-shuttle-frontend@0.2.0 test:e2e
+> playwright test
+
+
+Running 6 tests using 1 worker
+
+(node:23541) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/demo.spec.js:20:1 › 三端真实联动：候车、到站、ETA与完成 (3.9s)
+  ✓  2 tests/demo.spec.js:78:1 › 移动端取消候车与前端角色路由保护 (2.0s)
+  ✓  3 tests/dispatch.spec.js:24:1 › 高峰调度完整闭环：预警、推荐、拒绝顺延、接受和到站完成 (7.0s)
+  ✓  4 tests/dispatch.spec.js:99:1 › 当日车辆管理与窄屏布局 (2.3s)
+  ✓  5 tests/dispatch.spec.js:123:1 › 手机底部一键候车与司机下客计划实际保存 (2.1s)
+  ✓  6 tests/dispatch.spec.js:157:1 › 管理员撤回与拒绝任务人工处理留痕 (3.0s)
+
+  6 passed (21.4s)
