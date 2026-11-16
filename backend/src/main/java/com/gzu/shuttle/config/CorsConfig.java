@@ -17,6 +17,6 @@ public class CorsConfig implements WebMvcConfigurer {
                 .map(String::trim).filter(s -> !s.isEmpty()).toArray(String[]::new);
         registry.addMapping("/api/**").allowedOrigins(origins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("Content-Type", "X-Shuttle-CSRF").allowCredentials(true).maxAge(3600);
+                .allowedHeaders("Content-Type", "X-Shuttle-CSRF", "Idempotency-Key").allowCredentials(true).maxAge(3600);
     }
 }

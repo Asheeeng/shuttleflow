@@ -1,6 +1,7 @@
 package com.gzu.shuttle.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -15,6 +16,8 @@ public class Request {
     private Long destStationId;
     private String type;
     private String status;
+    @JsonIgnore
+    private String activeKey;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -66,7 +66,11 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "backend": BACKEND}
+    return {"status": "ok"}
+
+@app.get("/internal/health")
+def internal_health():
+    return {"status": "ok", "service_token_configured": bool(SERVICE_TOKEN)}
 
 @app.post("/predict")
 def predict(req: PredictRequest):

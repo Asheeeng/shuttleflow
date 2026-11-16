@@ -4,6 +4,7 @@ import com.gzu.shuttle.common.Result;
 import com.gzu.shuttle.entity.Driver;
 import com.gzu.shuttle.entity.Vehicle;
 import com.gzu.shuttle.mapper.DriverMapper;
+import com.gzu.shuttle.mapper.PassengerMapper;
 import com.gzu.shuttle.mapper.VehicleMapper;
 import com.gzu.shuttle.service.AuthSessionService;
 import java.util.HashMap;
@@ -21,8 +22,9 @@ public class AuthController {
     private final AuthSessionService sessions;
     private final DriverMapper drivers;
     private final VehicleMapper vehicles;
-    public AuthController(AuthSessionService sessions, DriverMapper drivers, VehicleMapper vehicles) {
-        this.sessions = sessions; this.drivers = drivers; this.vehicles = vehicles;
+    private final PassengerMapper passengers;
+    public AuthController(AuthSessionService sessions, DriverMapper drivers, VehicleMapper vehicles, PassengerMapper passengers) {
+        this.sessions = sessions; this.drivers = drivers; this.vehicles = vehicles; this.passengers = passengers;
     }
 
     @GetMapping("/session")
@@ -42,6 +44,15 @@ public class AuthController {
                     result.put("driver", safe);
                     Vehicle vehicle = d.getDefaultVehicleId() == null ? null : vehicles.selectById(d.getDefaultVehicleId());
                     result.put("vehicle", vehicle);
+                    if (request.getSession(false) != null && vehicle != null)
+                        request.getSession(false).setAttribute(AuthSessionService.VEHICLE_ID, vehicle.getId());
+                }
+            } else if ("PASSENGER".equals(user.get("role")) && user.get("id") != null) {
+                com.gzu.shuttle.entity.Passenger p = passengers.selectById(Long.valueOf(user.get("id").toString()));
+                if (p != null) {
+                    Map<String, Object> safe = new HashMap<String, Object>();
+                    safe.put("id", p.getId()); safe.put("name", p.getName()); safe.put("phone", p.getPhone());
+                    result.put("passenger", safe);
                 }
             }
         }

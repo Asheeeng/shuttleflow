@@ -59,6 +59,11 @@
     .queue-item .count { color:#ff9800; font-weight:600; }
     .loc-info { font-size:12px; color:#888; padding:4px 0; }
     .line-info { font-size:12px; color:#666; padding:6px 10px; background:#f5f5f5; border-radius:6px; margin-bottom:8px; }
+    .header { display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 10px; }
+    .passenger-account { position:absolute; right:10px; top:12px; display:flex; align-items:center; gap:8px; font-size:11px; }
+    .passenger-account a,.passenger-account button { padding:5px 7px; border:2px solid #25282d; background:#ffd44d; color:#17191d; font-size:11px; font-weight:800; text-decoration:none; cursor:pointer; }
+    .passenger-account span { max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    @media(max-width:390px) { .passenger-account { right:7px; gap:4px; } .passenger-account span { max-width:58px; } }
   </style>
 </head>
 <body class="neo-page neo-passenger">
@@ -66,6 +71,11 @@
   <div class="header">
     <button class="back-btn" @click="goBack">←</button>
     <span class="sf-brand"><span class="sf-mark" aria-hidden="true">SF</span><span>ShuttleFlow · 乘客端</span></span>
+    <div class="passenger-account" v-if="session.user">
+      <span>{{session.user.guest?'游客模式':(session.passenger?.name||session.user.displayName)}}</span>
+      <a v-if="session.user.guest" href="login.html?role=passenger">登录 / 注册</a>
+      <button v-else type="button" @click="logout">退出</button>
+    </div>
   </div>
 
   <div class="section">
@@ -156,14 +166,15 @@
 </div>
 <script src="config.js"></script>
 <script src="auth-client.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="vendor/vue.global.prod.js"></script>
 <script>
 const {createApp,ref,reactive,onMounted,onUnmounted,computed}=Vue;
 const _BASE=window.BACKEND_URL||window.location.origin;
 const API_BASE=_BASE+'/api';
 const WS_URL=(_BASE.startsWith('https')?'wss://':'ws://')+_BASE.replace(/^https?:\/\//,'')+'/ws';
-createApp({
+const passengerApp=createApp({
   setup(){
+    const session=ref(window.SHUTTLE_SESSION||{});
     const lineId=ref(1), direction=ref('go');
     const stations=ref([]);
     const fromStationId=ref(null), fromStation=ref(null);
@@ -269,13 +280,15 @@ createApp({
       }catch(e){wsConnected.value=false;}
     };
     const goBack=()=>{window.location.href='index.html';};
+    const logout=()=>window.ShuttleAuth.logout();
 
-    onMounted(async()=>{try{await window.ShuttleAuth.passengerSession();}catch(e){showToast('游客会话初始化失败','error');}fetchStations();fetchLineInfo();fetchQueue();connectWs();});
+    onMounted(()=>{fetchStations();fetchLineInfo();fetchQueue();connectWs();});
     onUnmounted(()=>{disposed=true;if(ws)ws.close();if(toastTimer)clearTimeout(toastTimer);});
 
-    return{lineId,direction,stations,fromStationId,fromStation,toStationId,toStation,etaList,queueList,filteredQueues,checkinData,wsConnected,toast,currentLine,crowdClass,getQueueCount,selectLine,selectDirection,selectStation,doCheckin,doCancel,goBack};
+    return{session,lineId,direction,stations,fromStationId,fromStation,toStationId,toStation,etaList,queueList,filteredQueues,checkinData,wsConnected,toast,currentLine,crowdClass,getQueueCount,selectLine,selectDirection,selectStation,doCheckin,doCancel,goBack,logout};
   }
-}).mount('#app');
+});
+window.ShuttleAuth.mountPassenger(passengerApp);
 </script>
 </body>
 </html>

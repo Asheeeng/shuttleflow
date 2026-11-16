@@ -1,7 +1,7 @@
 # 用户操作手册
 
 **项目名称**：校园摆渡车站点客流上报与AI智能动态调度系统
-**版本**：v1.1
+**版本**：v1.2
 **日期**：2026-11-16
 
 ---
@@ -10,9 +10,9 @@
 
 ### 1.1 环境准备
 
-1. 启动 MySQL 8（端口按本机配置）并准备当前分支使用的 `shuttle_db`。
-2. Redis（默认6379）为可选组件。
-3. 初始化 SQL 含 `DROP TABLE`，只对确认可重建的空演示库执行；不要对现有组内数据执行。首次启动会以追加列方式把旧演示口令迁移为 PBKDF2-HMAC-SHA256 哈希。
+1. 启动 MySQL 8 并配置本地服务账号，通过 `SHUTTLE_DB_URL`、`SHUTTLE_DB_USER`、`SHUTTLE_DB_PASSWORD` 提供连接信息。
+2. Redis（默认6379）为可选组件；生产环境应仅绑定本机并设置密码。
+3. 初始化 SQL 含 `DROP TABLE`，只对确认可重建的空数据库执行；已有 V1.1 数据库先备份，再执行 `backend/src/main/resources/db/migration/V1.2__security_and_idempotency.sql`。禁止在组内或正式数据库执行初始化 SQL。
 
 ### 1.2 启动后端（Spring Boot）
 
@@ -45,14 +45,19 @@ Windows PowerShell 使用`$env:SHUTTLE_AI_SERVICE_TOKEN = "同一随机令牌"`�
 |------|------|
 | 产品门户 | `http://localhost:8080/index.html` |
 | 登录页 | `http://localhost:8080/login.html` |
-| 乘客端（游客） | `http://localhost:8080/passenger.html` |
-| 司机端 | `http://localhost:8080/driver.html` |
+| 乘客登录/注册 | `http://localhost:8080/login.html?role=passenger` |
+| 乘客游客访问 | `http://localhost:8080/passenger.html?guest=1` |
+| 司机端 | `http://localhost:8080/driver.html`（司机账号由管理员创建） |
 | 管理端 | `http://localhost:8080/admin.html` |
 | 仿真台 | `http://localhost:8080/simulation.html`（需管理员或调度员会话） |
 
 ---
 
 ## 2. 乘客端操作
+
+### 2.0 登录与游客访问
+
+乘客可通过 `login.html?role=passenger` 使用手机号注册或登录；密码以安全哈希保存。暂不注册时，从门户点击「游客快速访问」，或打开 `passenger.html?guest=1`。游客候车请求绑定到当前浏览器会话，换浏览器或清除Cookie后不能代为取消。
 
 ### 2.1 扫码签到
 
@@ -99,9 +104,9 @@ Windows PowerShell 使用`$env:SHUTTLE_AI_SERVICE_TOKEN = "同一随机令牌"`�
 **操作步骤**：
 
 1. 进入司机端 `http://localhost:8080/driver.html`，页面会引导到统一登录页
-2. 输入绑定手机号与密码（演示账号为13800000001至13800000012，密码123456）
+2. 输入由管理员创建并绑定车辆的手机号与密码
 3. 点击「登录」
-4. 系统返回司机对应的车辆与线路信息
+4. 系统返回司机对应的车辆与线路信息。公开自助注册已关闭。
 
 ### 3.2 设置当日运行
 

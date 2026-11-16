@@ -198,9 +198,11 @@
           <span>{{t.status}}</span>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="btn btn-success" style="height:36px;font-size:13px;flex:1;" @click="acceptTask(t.id)">接单</button>
-          <button class="btn btn-danger" style="height:36px;font-size:13px;flex:1;" @click="rejectTask(t.id)">拒单</button>
-          <button class="btn btn-gray" style="height:36px;font-size:13px;flex:1;" @click="completeTask(t.id)">完成</button>
+          <template v-if="t.status==='assigned'">
+            <button class="btn btn-success" style="height:36px;font-size:13px;flex:1;" @click="acceptTask(t.id)">接单</button>
+            <button class="btn btn-danger" style="height:36px;font-size:13px;flex:1;" @click="rejectTask(t.id)">拒单</button>
+          </template>
+          <button v-if="t.status==='executing'" class="btn btn-gray" style="height:36px;font-size:13px;flex:1;" @click="completeTask(t.id)">完成任务</button>
         </div>
       </div>
     </div>
@@ -216,7 +218,7 @@
 </div>
 <script src="config.js"></script>
 <script src="auth-client.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="vendor/vue.global.prod.js"></script>
 <script>
 const {createApp,ref,reactive,computed,onMounted,onUnmounted}=Vue;
 const _BASE=window.BACKEND_URL||window.location.origin;
@@ -245,11 +247,11 @@ const driverApp=createApp({setup(){
         req.onsuccess=(e)=>{idbDB=e.target.result;updatePendingCount();};
       }catch(e){console.warn('IndexedDB不可用',e);}
     }
-    function cacheAction(url,data){
+    function cacheAction(url,data,idempotencyKey){
       if(!idbDB)return;
       try{
         const tx=idbDB.transaction(['pending'],'readwrite');
-        tx.objectStore('pending').add({url,data,ts:Date.now()});
+        tx.objectStore('pending').add({url,data,idempotencyKey,ts:Date.now()});
         tx.oncomplete=()=>{updatePendingCount();};
       }catch(e){console.warn('缓存失败',e);}
     }
@@ -270,7 +272,9 @@ const driverApp=createApp({setup(){
         const items=req.result;
         for(const item of items){
           try{
-            const response=await fetch(API+item.url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(item.data)});
+            const requestHeaders={'Content-Type':'application/json'};
+            if(item.idempotencyKey)requestHeaders['Idempotency-Key']=item.idempotencyKey;
+            const response=await fetch(API+item.url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers(requestHeaders),body:JSON.stringify(item.data)});
             const result=await response.json();
             if(!response.ok||result.code!==200)break;
             store.delete(item.id);
@@ -284,26 +288,38 @@ const driverApp=createApp({setup(){
     const netClass=computed(()=>netStatus.value==='good'?'net-good':netStatus.value==='weak'?'net-weak':'net-offline');
     const netDotClass=computed(()=>netStatus.value==='good'?'net-good':netStatus.value==='weak'?'net-weak':'net-offline');
     const netLabel=computed(()=>netStatus.value==='good'?'实时':netStatus.value==='weak'?'弱网轮询':'离线');
+    const idempotencyKeys=new Map();
 
     const loadRate=computed(()=>{if(!vehicle.value)return 0;return Math.round(vehicle.value.currentLoad*100/vehicle.value.capacity);});
     const loadColor=computed(()=>{const r=loadRate.value;return r>=90?'#f44336':r>=70?'#ff9800':'#4caf50';});
     const loadStatus=computed(()=>{const r=loadRate.value;return r>=90?'高负载':r>=70?'中等':'正常';});
+    function newIdempotencyKey(){
+      if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID().replace(/-/g,'');
+      return Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+    }
 
     function setSpeed(v){speed.value=v;}
     function logout(){return window.ShuttleAuth.logout();}
 
     async function post(url,data){
       const t0=Date.now();
+      const eventWrite=/^\/driver\/(arrive|alight|board|depart|calibrate)$/.test(url);
+      const signature=eventWrite?url+JSON.stringify(data):'';
+      let idempotencyKey=eventWrite?idempotencyKeys.get(signature):'';
+      if(eventWrite&&!idempotencyKey){idempotencyKey=newIdempotencyKey();idempotencyKeys.set(signature,idempotencyKey);}
       try{
-        const r=await fetch(API+url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(data)});
+        const requestHeaders={'Content-Type':'application/json'};
+        if(idempotencyKey)requestHeaders['Idempotency-Key']=idempotencyKey;
+        const r=await fetch(API+url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers(requestHeaders),body:JSON.stringify(data)});
         netLatency.value=Date.now()-t0;
         updateNetStatus();
         const result=await r.json();
         if(r.status===401){window.location.replace('login.html?role=driver&expired=1');}
+        if(eventWrite)idempotencyKeys.delete(signature);
         return result;
       }catch(e){
         netStatus.value='offline';
-        cacheAction(url,data);
+        cacheAction(url,data,idempotencyKey);
         return {code:0,msg:'网络异常,已缓存待补传'};
       }
     }

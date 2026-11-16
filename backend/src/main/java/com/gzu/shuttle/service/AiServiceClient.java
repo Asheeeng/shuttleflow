@@ -41,7 +41,7 @@ public class AiServiceClient {
     public void checkHealth() {
         if (!enabled) { available = false; return; }
         try {
-            String resp = get(serviceUrl + "/health");
+            String resp = get(serviceUrl + "/internal/health");
             available = resp != null && resp.contains("ok");
             log.info("AI服务健康检查: {} -> {}", serviceUrl, available ? "可用" : "不可用");
         } catch (Exception e) {

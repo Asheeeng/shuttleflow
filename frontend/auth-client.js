@@ -43,10 +43,28 @@
     }
   }
 
+  async function mountPassenger(app) {
+    try {
+      let session = await readSession(false);
+      if (session.authenticated && session.user && session.user.role === 'PASSENGER') {
+        app.mount('#app');
+        return;
+      }
+      const guestRequested = new URLSearchParams(window.location.search).get('guest') === '1';
+      if (!session.authenticated && guestRequested) {
+        session = await readSession(true);
+        if (session.user && session.user.guest) { app.mount('#app'); return; }
+      }
+      window.location.replace('login.html?role=passenger&next=passenger.html');
+    } catch (error) {
+      window.location.replace('login.html?role=passenger&next=passenger.html');
+    }
+  }
+
   async function logout() {
     try { await fetch(api + '/auth/logout', { method: 'POST', credentials: 'same-origin', headers: headers() }); }
     finally { csrfToken = ''; window.location.replace('index.html'); }
   }
 
-  window.ShuttleAuth = { readSession, passengerSession, headers, mountProtected, logout };
+  window.ShuttleAuth = { readSession, passengerSession, headers, mountProtected, mountPassenger, logout };
 })();

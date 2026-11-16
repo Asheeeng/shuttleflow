@@ -57,7 +57,9 @@ CREATE TABLE `vehicle` (
   `running_today` TINYINT NOT NULL DEFAULT 0 COMMENT '当日是否运行',
   `lat` DECIMAL(10,7),
   `lng` DECIMAL(10,7),
-  `last_report_time` DATETIME
+  `last_report_time` DATETIME,
+  CONSTRAINT `chk_vehicle_capacity_positive` CHECK (`capacity` > 0),
+  CONSTRAINT `chk_vehicle_load_in_capacity` CHECK (`current_load` >= 0 AND `current_load` <= `capacity`)
 ) ENGINE=InnoDB COMMENT='车辆';
 
 -- ---------- 司机 ----------
@@ -66,11 +68,12 @@ CREATE TABLE `driver` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `name` VARCHAR(20) NOT NULL,
   `phone` VARCHAR(20),
-  `password` VARCHAR(64) NOT NULL DEFAULT '123456',
   `password_hash` VARCHAR(100) DEFAULT NULL,
   `default_vehicle_id` BIGINT COMMENT '默认绑定车辆',
   `status` VARCHAR(20) NOT NULL DEFAULT 'off' COMMENT 'off/on_duty/driving',
-  `enabled` TINYINT NOT NULL DEFAULT 1
+  `enabled` TINYINT NOT NULL DEFAULT 1,
+  UNIQUE KEY `uk_driver_phone` (`phone`),
+  UNIQUE KEY `uk_driver_vehicle` (`default_vehicle_id`)
 ) ENGINE=InnoDB COMMENT='司机';
 
 -- ---------- 管理员 ----------
@@ -78,7 +81,6 @@ DROP TABLE IF EXISTS `admin`;
 CREATE TABLE `admin` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `username` VARCHAR(30) NOT NULL UNIQUE,
-  `password` VARCHAR(64) NOT NULL DEFAULT 'admin123',
   `password_hash` VARCHAR(100) DEFAULT NULL,
   `name` VARCHAR(20) NOT NULL,
   `role` VARCHAR(20) NOT NULL DEFAULT 'dispatcher' COMMENT 'dispatcher/admin'
@@ -91,7 +93,9 @@ CREATE TABLE `passenger` (
   `open_id` VARCHAR(64) COMMENT '微信openid或临时ID',
   `name` VARCHAR(20),
   `phone` VARCHAR(20),
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `password_hash` VARCHAR(100) DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_passenger_phone` (`phone`)
 ) ENGINE=InnoDB COMMENT='乘客';
 
 -- ---------- 乘客请求(签到/预约) ----------
@@ -105,8 +109,11 @@ CREATE TABLE `request` (
   `dest_station_id` BIGINT COMMENT '目的站点(预约时)',
   `type` VARCHAR(10) NOT NULL DEFAULT 'checkin' COMMENT 'checkin/reserve/cancel',
   `status` VARCHAR(20) NOT NULL DEFAULT 'waiting' COMMENT 'waiting/boarded/cancelled/expired',
+  `active_key` VARCHAR(64) DEFAULT NULL COMMENT '活动请求幂等键，取消/上车后置空',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_request_active_key` (`active_key`),
+  CONSTRAINT `chk_request_status` CHECK (`status` IN ('waiting','boarded','cancelled','expired'))
 ) ENGINE=InnoDB COMMENT='乘客请求';
 
 -- ---------- 事件总线(原子事件) ----------
@@ -152,13 +159,16 @@ CREATE TABLE `task` (
   `vehicle_id` BIGINT COMMENT '指派车辆',
   `priority` INT NOT NULL DEFAULT 5 COMMENT '1-10',
   `status` VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending/assigned/accepted/executing/completed/rejected/timeout/escalated',
+  `dispatch_key` VARCHAR(64) DEFAULT NULL COMMENT '自动任务幂等键',
   `reason_code` VARCHAR(50) COMMENT 'AI理由码',
   `confidence` DECIMAL(3,2) DEFAULT 0.80,
   `suggestion` TEXT COMMENT 'AI建议描述',
   `assigned_at` DATETIME,
   `completed_at` DATETIME,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_task_dispatch_key` (`dispatch_key`),
+  CONSTRAINT `chk_task_status` CHECK (`status` IN ('pending','assigned','accepted','executing','completed','rejected','timeout','escalated'))
 ) ENGINE=InnoDB COMMENT='调度任务';
 
 -- ---------- 预警 ----------
@@ -272,16 +282,7 @@ INSERT INTO `vehicle` (`plate_no`,`line_id`,`capacity`,`status`) VALUES
 ('5',2,13,'offline'),('6',2,13,'offline'),('7',2,13,'offline'),('8',2,13,'offline'),
 ('9',3,13,'offline'),('10',3,13,'offline'),('11',3,13,'offline'),('12',3,13,'offline');
 
--- 司机(仿真)
-INSERT INTO `driver` (`name`,`phone`,`default_vehicle_id`,`status`) VALUES
-('司机01','13800000001',1,'off'),('司机02','13800000002',2,'off'),('司机03','13800000003',3,'off'),('司机04','13800000004',4,'off'),
-('司机05','13800000005',5,'off'),('司机06','13800000006',6,'off'),('司机07','13800000007',7,'off'),('司机08','13800000008',8,'off'),
-('司机09','13800000009',9,'off'),('司机10','13800000010',10,'off'),('司机11','13800000011',11,'off'),('司机12','13800000012',12,'off');
-
--- 管理员
-INSERT INTO `admin` (`username`,`password`,`name`,`role`) VALUES
-('admin','admin123','系统管理员','admin'),
-('dispatcher','123456','调度员01','dispatcher');
+-- 生产初始化不创建演示身份。首次管理员通过仅本机的一次性环境变量引导创建。
 
 -- 课表(假定): 下课时间/楼栋/人数/就近站点/转化率
 INSERT INTO `course_schedule` (`building`,`end_time`,`student_count`,`nearby_station_id`,`conversion_rate`,`weekday`) VALUES

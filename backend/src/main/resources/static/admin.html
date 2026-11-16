@@ -60,7 +60,7 @@
 <div id="app">
   <div class="header">
     <h1><a class="sf-brand" href="index.html"><span class="sf-mark" aria-hidden="true">SF</span><span>ShuttleFlow · 调度控制台</span></a></h1>
-    <span class="user" v-if="admin">{{admin.name || admin.displayName}} · {{admin.role}} <a href="simulation.html" style="margin-left:14px;">仿真台</a> <button class="btn" type="button" @click="logout">退出</button></span>
+    <span class="user" v-if="admin">{{admin.name || admin.displayName}} · {{admin.role}} <a href="simulation.html" style="margin-left:14px;">仿真台</a> <button v-if="admin.role==='ADMIN'" class="btn" type="button" @click="tab='security'">账号安全</button> <button class="btn" type="button" @click="logout">退出</button></span>
   </div>
   <template v-if="!admin"><div class="main"><div class="card" role="status">正在载入调度控制台…</div></div></template>
   <template v-else>
@@ -69,6 +69,7 @@
         <div :class="['tab',tab==='dashboard'?'tab-active':'']" @click="tab='dashboard'">调度大屏</div>
         <div :class="['tab',tab==='dispatch'?'tab-active':'']" @click="tab='dispatch'">调度台</div>
         <div :class="['tab',tab==='vehicle'?'tab-active':'']" @click="tab='vehicle'">车辆管理</div>
+        <div :class="['tab',tab==='driver'?'tab-active':'']" @click="tab='driver'">司机账号</div>
         <div :class="['tab',tab==='alert'?'tab-active':'']" @click="tab='alert'">预警中心</div>
         <div :class="['tab',tab==='event'?'tab-active':'']" @click="tab='event'">事件流水</div>
       </div>
@@ -167,12 +168,74 @@
                 <span>线路{{t.lineId}} | 优先级{{t.priority}} | {{t.reasonCode}}</span>
                 <span v-if="t.vehicleId">车辆#{{t.vehicleId}}</span>
               </div>
-              <div style="margin-top:6px;" v-if="t.status==='pending'||t.status==='assigned'">
-                <button class="btn btn-primary btn-sm" @click="assignTask(t.id)">派单</button>
-                <button class="btn btn-success btn-sm" @click="completeTask(t.id)">完成</button>
+              <div style="margin-top:6px;" v-if="t.status==='pending'||t.status==='executing'">
+                <button v-if="t.status==='pending'" class="btn btn-primary btn-sm" @click="assignTask(t.id)">派单</button>
+                <button v-if="t.status==='executing'" class="btn btn-success btn-sm" @click="completeTask(t.id)">完成</button>
               </div>
             </div>
             <p v-if="!tasks.length" style="color:#999;text-align:center;padding:20px;">暂无活跃任务</p>
+          </div>
+        </div>
+      </template>
+
+      <template v-if="tab==='driver'">
+        <div class="grid" style="grid-template-columns:minmax(280px, .8fr) minmax(360px, 1.2fr);">
+          <div class="card" v-if="admin.role==='ADMIN'">
+            <h3>管理员创建司机账号</h3>
+            <p style="color:#6d727b;font-size:13px;">公开司机注册已关闭。账号创建后才能登录，并只能操作这里绑定的车辆。</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <input v-model="newDriver.name" maxlength="20" autocomplete="name" placeholder="司机姓名" />
+              <input v-model="newDriver.phone" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="司机手机号" />
+              <input v-model="newDriver.password" type="password" minlength="8" autocomplete="new-password" placeholder="初始密码（至少8位）" />
+              <select v-model="newDriver.vehicleId"><option value="">选择未绑定车辆</option><option v-for="v in unassignedVehicles" :key="v.id" :value="v.id">{{v.plateNo}} · {{v.lineId}}号线</option></select>
+              <button class="btn btn-primary" @click="createDriver" :disabled="creatingDriver">{{creatingDriver?'正在创建…':'创建并绑定车辆'}}</button>
+              <p v-if="driverNotice" role="status" style="margin:0;color:#2563eb;">{{driverNotice}}</p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>司机与车辆绑定</h3>
+            <div style="overflow-x:auto;">
+              <table><thead><tr><th>姓名</th><th>手机号</th><th>绑定车辆</th><th>账号状态</th></tr></thead>
+                <tbody><tr v-for="d in drivers" :key="d.id"><td>{{d.name}}</td><td>{{d.phone}}</td><td>{{vehicleLabel(d.defaultVehicleId)}}</td><td>{{d.enabled===1?'可登录':'已停用'}} <button v-if="admin.role==='ADMIN'" class="btn btn-sm" @click="beginDriverReset(d)">重置密码</button></td></tr>
+                <tr v-if="!drivers.length"><td colspan="4" style="text-align:center;color:#777;padding:18px;">暂无司机账号，请由管理员创建。</td></tr></tbody>
+              </table>
+            </div>
+            <div v-if="resetDriver" style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+              <input v-model="driverResetPassword" type="password" minlength="8" autocomplete="new-password" :placeholder="'为'+resetDriver.name+'设置新密码（至少8位）'" />
+              <button class="btn btn-primary" @click="resetDriverPassword">确认重置</button>
+              <button class="btn" @click="resetDriver=null">取消</button>
+            </div>
+            <p v-if="driverResetNotice" role="status" style="margin:10px 0 0;color:#2563eb;">{{driverResetNotice}}</p>
+          </div>
+        </div>
+      </template>
+
+      <template v-if="tab==='security'">
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));">
+          <div class="card" style="max-width:620px;">
+            <h3>管理员账号安全</h3>
+            <p style="color:#6d727b;font-size:13px;">修改密码会立即退出该账号在本进程内的其他会话；建议使用至少14位的独立密码。</p>
+            <div style="display:flex;flex-direction:column;gap:9px;">
+              <input v-model="passwordChange.currentPassword" type="password" autocomplete="current-password" placeholder="当前密码" />
+              <input v-model="passwordChange.newPassword" type="password" minlength="14" autocomplete="new-password" placeholder="新密码（至少14位）" />
+              <input v-model="passwordChange.confirmPassword" type="password" minlength="14" autocomplete="new-password" placeholder="再次输入新密码" />
+              <button class="btn btn-primary" @click="changeOwnPassword" :disabled="savingPassword">{{savingPassword?'正在更新…':'更新管理员密码'}}</button>
+              <p v-if="passwordNotice" role="status" style="margin:0;color:#2563eb;">{{passwordNotice}}</p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>调度员账号</h3>
+            <p style="color:#6d727b;font-size:13px;">调度员可处理调度任务，但无车辆状态和账号管理权限。</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <input v-model="newDispatcher.username" maxlength="30" autocomplete="username" placeholder="调度员用户名" />
+              <input v-model="newDispatcher.name" maxlength="20" autocomplete="name" placeholder="调度员姓名" />
+              <input v-model="newDispatcher.password" type="password" minlength="12" autocomplete="new-password" placeholder="初始密码（至少12位）" />
+              <button class="btn btn-primary" @click="createDispatcher">创建调度员</button>
+              <p v-if="dispatcherNotice" role="status" style="margin:0;color:#2563eb;">{{dispatcherNotice}}</p>
+            </div>
+            <table style="margin-top:14px;width:100%;"><thead><tr><th>用户名</th><th>姓名</th><th>角色</th></tr></thead><tbody>
+              <tr v-for="operator in operators" :key="operator.id"><td>{{operator.username}}</td><td>{{operator.name}}</td><td>{{operator.role}}</td></tr>
+            </tbody></table>
           </div>
         </div>
       </template>
@@ -186,7 +249,7 @@
             <tr v-for="v in vehicles" :key="v.id">
               <td><b>{{v.plateNo}}</b></td>
               <td>{{v.lineId}}号线</td>
-              <td>{{v.capacity}}</td>
+              <td>{{v.capacity}} <span v-if="admin.role==='ADMIN'" style="white-space:nowrap;"><input type="number" min="1" max="100" step="1" v-model.number="capacityEdits[v.id]" :placeholder="String(v.capacity)" aria-label="新的核定载客量" style="width:72px;min-height:32px;padding:3px;" /><button class="btn btn-sm" @click="saveCapacity(v)">保存</button></span></td>
               <td>{{v.currentLoad}}</td>
               <td><span :class="['badge',statusBadge(v.status)]">{{v.status}}</span></td>
               <td><span v-if="admin.role==='ADMIN'" :class="['toggle',v.runningToday===1?'toggle-on':'toggle-off']" @click="setRunning(v)"></span><span v-else>{{v.runningToday===1?'运行中':'待命'}}</span></td>
@@ -195,7 +258,7 @@
                 <select v-if="admin.role==='ADMIN'" @change="setStatus(v,$event.target.value)" style="font-size:12px;">
                   <option value="">改状态</option>
                   <option value="offline">offline</option><option value="standby">standby</option>
-                  <option value="running">running</option><option value="task">task</option>
+                  <option value="running">running</option><option value="returning">returning</option>
                 </select>
                 <span v-else>只读（调度员）</span>
               </td>
@@ -246,7 +309,7 @@
 </div>
 <script src="config.js"></script>
 <script src="auth-client.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="vendor/vue.global.prod.js"></script>
 <script>
 const {createApp,ref,reactive,computed,onMounted,onUnmounted} = Vue;
 const adminApp=createApp({
@@ -258,8 +321,13 @@ const adminApp=createApp({
     const kpi=ref({});
     const tab=ref('dashboard');
     const vehicles=ref([]), stations=ref([]), lines=ref([]), alerts=ref([]), allAlerts=ref([]);
-    const tasks=ref([]), events=ref([]), queues=ref([]);
+    const tasks=ref([]), events=ref([]), queues=ref([]), drivers=ref([]);
     const dashboard=ref({}), newTask=reactive({lineId:'',stationId:'',direction:'go',priority:'5',suggestion:''});
+    const newDriver=reactive({name:'',phone:'',password:'',vehicleId:''}),creatingDriver=ref(false),driverNotice=ref('');
+    const resetDriver=ref(null),driverResetPassword=ref(''),driverResetNotice=ref('');
+    const passwordChange=reactive({currentPassword:'',newPassword:'',confirmPassword:''}),savingPassword=ref(false),passwordNotice=ref('');
+    const newDispatcher=reactive({username:'',name:'',password:''}),operators=ref([]),dispatcherNotice=ref('');
+    const capacityEdits=reactive({});
     let ws=null, timer=null, disposed=false;
 
     async function post(url,data){const r=await fetch(API+url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(data)});if(r.status===401)window.location.replace('login.html?role=admin&expired=1');return r.json();}
@@ -267,10 +335,10 @@ const adminApp=createApp({
     function logout(){return window.ShuttleAuth.logout();}
 
     async function loadAll(){
-      const [v,s,l,a,t,e,d,q,k]=await Promise.all([
+      const [v,s,l,a,t,e,d,q,k,dr]=await Promise.all([
         get('/admin/vehicles'),get('/stations'),get('/lines'),
         get('/admin/alerts'),get('/admin/tasks'),get('/admin/events?limit=50'),
-        get('/admin/dashboard'),get('/admin/queues'),get('/admin/stats/kpi')
+        get('/admin/dashboard'),get('/admin/queues'),get('/admin/stats/kpi'),get('/admin/drivers')
       ]);
       if(v.code===200)vehicles.value=v.data;
       if(s.code===200)stations.value=s.data;
@@ -281,6 +349,8 @@ const adminApp=createApp({
       if(d.code===200)dashboard.value=d.data;
       if(q.code===200)queues.value=q.data;
       if(k.code===200)kpi.value=k.data;
+      if(dr.code===200)drivers.value=dr.data;
+      if(admin.value&&admin.value.role==='ADMIN'){const ops=await get('/admin/operators');if(ops.code===200)operators.value=ops.data;}
       const ar=await get('/admin/alerts?status=all');if(ar.code===200)allAlerts.value=ar.data;
     }
 
@@ -291,6 +361,8 @@ const adminApp=createApp({
     }
 
     const topQueues=computed(()=>queues.value.filter(q=>q.waitingCount>0).sort((a,b)=>b.waitingCount-a.waitingCount).slice(0,10));
+    const unassignedVehicles=computed(()=>vehicles.value.filter(v=>!drivers.value.some(d=>d.defaultVehicleId===v.id)));
+    function vehicleLabel(id){const v=vehicles.value.find(x=>x.id===id);return v?v.plateNo+' · '+v.lineId+'号线':'未绑定';}
     function stationName(id){const s=stations.value.find(x=>x.id===id);return s?s.shortName:id;}
     function loadBadge(v){const r=v.currentLoad*100/v.capacity;return r>=90?'badge-red':r>=70?'badge-yellow':'badge-green';}
     function statusBadge(s){const m={offline:'badge-gray',standby:'badge-blue',running:'badge-green',task:'badge-orange',returning:'badge-yellow'};return m[s]||'badge-gray';}
@@ -298,11 +370,64 @@ const adminApp=createApp({
 
     async function setRunning(v){const res=await post('/admin/vehicle/set-running',{vehicleId:v.id,running:v.runningToday!==1});if(res.code===200)vehicles.value=vehicles.value.map(x=>x.id===v.id?res.data:x);}
     async function setStatus(v,status){if(!status)return;const res=await post('/admin/vehicle/set-status',{vehicleId:v.id,status});if(res.code===200)vehicles.value=vehicles.value.map(x=>x.id===v.id?res.data:x);}
+    async function saveCapacity(v){
+      const capacity=Number(capacityEdits[v.id]);
+      if(!Number.isInteger(capacity)||capacity<1||capacity>100){alert('容量需为1至100的整数');return;}
+      const res=await post('/admin/vehicle/capacity',{vehicleId:v.id,capacity});
+      if(res.code===200){vehicles.value=vehicles.value.map(x=>x.id===v.id?res.data:x);delete capacityEdits[v.id];}
+      else alert(res.msg||'容量更新失败');
+    }
     async function confirmAlert(id){await post('/admin/alert/confirm',{id});loadAll();}
     async function suppressAlert(id){await post('/admin/alert/suppress',{id});loadAll();}
     async function resolveAlert(id){await post('/admin/alert/resolve',{id});loadAll();}
     async function assignTask(id){await post('/admin/task/assign',{taskId:id});loadAll();}
     async function completeTask(id){await post('/admin/task/complete',{taskId:id});loadAll();}
+    async function createDriver(){
+      driverNotice.value='';
+      if(!newDriver.name.trim()||!newDriver.phone.trim()||newDriver.password.length<8||!newDriver.vehicleId){driverNotice.value='请填写姓名、手机号、至少8位初始密码并选择车辆。';return;}
+      creatingDriver.value=true;
+      try{
+        const res=await post('/admin/driver/create',{name:newDriver.name.trim(),phone:newDriver.phone.trim(),password:newDriver.password,vehicleId:Number(newDriver.vehicleId)});
+        if(res.code!==200)throw new Error(res.msg||'创建失败');
+        driverNotice.value='司机账号已创建并绑定车辆。请通过安全渠道告知司机初始密码。';
+        newDriver.name='';newDriver.phone='';newDriver.password='';newDriver.vehicleId='';
+        await loadAll();
+      }catch(error){driverNotice.value=error.message||'创建失败，请重试。';}
+      finally{creatingDriver.value=false;}
+    }
+    function beginDriverReset(driver){resetDriver.value=driver;driverResetPassword.value='';driverResetNotice.value='';}
+    async function resetDriverPassword(){
+      driverResetNotice.value='';
+      if(!resetDriver.value||driverResetPassword.value.length<8){driverResetNotice.value='新密码至少需要8位。';return;}
+      try{
+        const res=await post('/admin/driver/reset-password',{driverId:resetDriver.value.id,password:driverResetPassword.value});
+        if(res.code!==200)throw new Error(res.msg||'重置失败');
+        driverResetNotice.value='密码已重置，司机原有登录会话已失效。';resetDriver.value=null;driverResetPassword.value='';
+      }catch(error){driverResetNotice.value=error.message||'重置失败，请重试。';}
+    }
+    async function changeOwnPassword(){
+      passwordNotice.value='';
+      if(passwordChange.newPassword.length<14||passwordChange.newPassword!==passwordChange.confirmPassword){passwordNotice.value='新密码需至少14位，且两次输入一致。';return;}
+      savingPassword.value=true;
+      try{
+        const res=await post('/admin/account/password',{currentPassword:passwordChange.currentPassword,newPassword:passwordChange.newPassword});
+        if(res.code!==200)throw new Error(res.msg||'密码更新失败');
+        passwordChange.currentPassword='';passwordChange.newPassword='';passwordChange.confirmPassword='';
+        await window.ShuttleAuth.readSession(false);admin.value=window.SHUTTLE_SESSION.user;
+        passwordNotice.value='管理员密码已更新，其他会话已退出。';
+      }catch(error){passwordNotice.value=error.message||'密码更新失败，请重试。';}
+      finally{savingPassword.value=false;}
+    }
+    async function createDispatcher(){
+      dispatcherNotice.value='';
+      if(!newDispatcher.username.trim()||!newDispatcher.name.trim()||newDispatcher.password.length<12){dispatcherNotice.value='请填写用户名、姓名和至少12位密码。';return;}
+      try{
+        const res=await post('/admin/dispatcher/create',{username:newDispatcher.username.trim(),name:newDispatcher.name.trim(),password:newDispatcher.password});
+        if(res.code!==200)throw new Error(res.msg||'创建失败');
+        newDispatcher.username='';newDispatcher.name='';newDispatcher.password='';dispatcherNotice.value='调度员账号已创建。';
+        const ops=await get('/admin/operators');if(ops.code===200)operators.value=ops.data;
+      }catch(error){dispatcherNotice.value=error.message||'创建失败，请重试。';}
+    }
     async function createTask(){
       if(!newTask.lineId){alert('请选择线路');return;}
       const res=await post('/admin/task/create',newTask);
@@ -311,9 +436,9 @@ const adminApp=createApp({
 
     onMounted(()=>{if(admin.value){loadAll();connectWS();timer=setInterval(loadAll,5000);}});
     onUnmounted(()=>{disposed=true;if(ws)ws.close();if(timer)clearInterval(timer);});
-    return {admin,kpi,tab,vehicles,stations,lines,alerts,allAlerts,tasks,events,queues,dashboard,newTask,logout,
-      topQueues,stationName,loadBadge,statusBadge,taskBadge,
-      setRunning,setStatus,confirmAlert,suppressAlert,resolveAlert,assignTask,completeTask,createTask};
+    return {admin,kpi,tab,vehicles,stations,lines,alerts,allAlerts,tasks,events,queues,drivers,operators,dashboard,newTask,newDriver,creatingDriver,driverNotice,unassignedVehicles,resetDriver,driverResetPassword,driverResetNotice,passwordChange,savingPassword,passwordNotice,newDispatcher,dispatcherNotice,capacityEdits,logout,
+      topQueues,stationName,vehicleLabel,loadBadge,statusBadge,taskBadge,
+      setRunning,setStatus,saveCapacity,confirmAlert,suppressAlert,resolveAlert,assignTask,completeTask,createTask,createDriver,beginDriverReset,resetDriverPassword,changeOwnPassword,createDispatcher};
   }
 });
 window.ShuttleAuth.mountProtected(adminApp,'ADMIN');

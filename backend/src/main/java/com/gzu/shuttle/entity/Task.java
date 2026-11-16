@@ -1,6 +1,7 @@
 package com.gzu.shuttle.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,6 +17,8 @@ public class Task {
     private Long vehicleId;
     private Integer priority;
     private String status;
+    @JsonIgnore
+    private String dispatchKey;
     private String reasonCode;
     private BigDecimal confidence;
     private String suggestion;

@@ -8,6 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,7 +28,9 @@ public class EventService {
     @Autowired private FusionService fusionService;
     @Autowired private DispatchService dispatchService;
     @Autowired private RedisTemplate<String, Object> redisTemplate;
+    @Value("${shuttle.redis.event-stream-max-length:10000}") private long maxStreamLength;
 
+    @Transactional(rollbackFor = Exception.class)
     public ShuttleEvent receiveEvent(ShuttleEvent event) {
         if (event.getEventNo() == null || event.getEventNo().isEmpty()) {
             event.setEventNo(UUID.randomUUID().toString().replace("-", ""));
@@ -38,14 +45,12 @@ public class EventService {
         if (event.getReportTime() == null) event.setReportTime(LocalDateTime.now());
         if (event.getConfidence() == null) event.setConfidence(BigDecimal.ONE);
         event.setProcessed(1);
-        eventMapper.insert(event);
-
         try {
-            Map<String, String> eventMap = new HashMap<>();
-            eventMap.put("eventNo", event.getEventNo());
-            eventMap.put("type", event.getType());
-            redisTemplate.opsForStream().add("shuttle:events", eventMap);
-        } catch (Exception e) { log.warn("Redis stream add failed: {}", e.getMessage()); }
+            eventMapper.insert(event);
+        } catch (DuplicateKeyException duplicate) {
+            log.info("重复事件已忽略 eventNo={}", event.getEventNo());
+            return event;
+        }
 
         switch (event.getType()) {
             case "checkin":  fusionService.onCheckin(event); break;
@@ -57,9 +62,28 @@ public class EventService {
             case "calibrate":fusionService.onCalibrate(event); break;
         }
 
-        ShuttleWebSocketHandler.broadcast("event", event);
         dispatchService.onEvent(event);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { publishCommittedEvent(event); }
+            });
+        } else {
+            publishCommittedEvent(event);
+        }
         return event;
+    }
+
+    private void publishCommittedEvent(ShuttleEvent event) {
+        try {
+            Map<String, String> eventMap = new HashMap<String, String>();
+            eventMap.put("eventNo", event.getEventNo());
+            eventMap.put("type", event.getType());
+            redisTemplate.opsForStream().add("shuttle:events", eventMap);
+            redisTemplate.opsForStream().trim("shuttle:events", Math.max(100L, maxStreamLength), true);
+        } catch (Exception e) {
+            log.warn("Redis事件流写入失败：{}", e.getMessage());
+        }
+        ShuttleWebSocketHandler.broadcast("event", event);
     }
 
     public List<ShuttleEvent> recentEvents(int limit) {

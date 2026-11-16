@@ -75,6 +75,8 @@ public class CommonController {
         Driver d = driverMapper.selectOne(qw);
         if (d == null || supplied == null || d.getPasswordHash() == null || !passwordHashes.matches(supplied, d.getPasswordHash()))
             return Result.fail(401, "手机号或密码错误");
+        if (d.getDefaultVehicleId() == null || vehicleMapper.selectById(d.getDefaultVehicleId()) == null)
+            return Result.fail(403, "该司机账号尚未由管理员绑定车辆");
         d.setStatus("on_duty");
         driverMapper.updateById(d);
         Vehicle vehicle = d.getDefaultVehicleId() == null ? null : vehicleMapper.selectById(d.getDefaultVehicleId());
@@ -83,79 +85,10 @@ public class CommonController {
         safeDriver.put("phone", d.getPhone()); safeDriver.put("defaultVehicleId", d.getDefaultVehicleId());
         safeDriver.put("status", d.getStatus());
         Map<String, Object> auth = authSessions.issue(request, "DRIVER", d.getId(), d.getPhone(), d.getName());
+        request.getSession(false).setAttribute(AuthSessionService.VEHICLE_ID, d.getDefaultVehicleId());
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("driver", safeDriver); result.put("vehicle", vehicle);
         result.put("user", auth.get("user")); result.put("csrfToken", auth.get("csrfToken"));
-        return Result.ok(result);
-    }
-
-    @PostMapping("/driver/register")
-    public Result<Map<String, Object>> driverRegister(@RequestBody Map<String, Object> body, javax.servlet.http.HttpServletRequest request) {
-        String phone = (String) body.get("phone");
-        String password = (String) body.get("password");
-        String name = (String) body.getOrDefault("name", "");
-        if (phone == null || !phone.matches("^[0-9+ -]{7,20}$")) return Result.fail(400, "请输入有效手机号");
-        if (password == null || password.length() < 8 || password.length() > 128) return Result.fail(400, "新密码长度需为8至128个字符");
-        QueryWrapper<Driver> existQw = new QueryWrapper<>();
-        existQw.eq("phone", phone);
-        if (driverMapper.selectCount(existQw) > 0) return Result.fail("该手机号已注册");
-
-        Long vehicleId = null;
-        if (body.get("vehicleId") != null && !body.get("vehicleId").toString().isEmpty()) {
-            vehicleId = Long.valueOf(body.get("vehicleId").toString());
-            QueryWrapper<Driver> assignedCheck = new QueryWrapper<Driver>();
-            assignedCheck.eq("default_vehicle_id", vehicleId);
-            if (driverMapper.selectCount(assignedCheck) > 0) return Result.fail(409, "该车辆已绑定司机");
-        } else {
-            List<Driver> allDrivers = driverMapper.selectList(null);
-            java.util.Set<Long> assignedVehicles = new java.util.HashSet<>();
-            for (Driver d : allDrivers) {
-                if (d.getDefaultVehicleId() != null) assignedVehicles.add(d.getDefaultVehicleId());
-            }
-            List<Vehicle> allVehicles = vehicleMapper.selectList(null);
-            for (Vehicle v : allVehicles) {
-                if (!assignedVehicles.contains(v.getId())) { vehicleId = v.getId(); break; }
-            }
-            if (vehicleId == null) return Result.fail("所有车辆已分配司机");
-        }
-
-        Driver d = new Driver();
-        d.setName(name);
-        d.setPhone(phone);
-        d.setPassword("");
-        d.setPasswordHash(passwordHashes.encode(password));
-        d.setDefaultVehicleId(vehicleId);
-        d.setStatus("off");
-        d.setEnabled(1);
-        driverMapper.insert(d);
-
-        Map<String, Object> safeDriver = new HashMap<String, Object>();
-        safeDriver.put("id", d.getId()); safeDriver.put("name", d.getName()); safeDriver.put("phone", d.getPhone());
-        safeDriver.put("defaultVehicleId", d.getDefaultVehicleId()); safeDriver.put("status", d.getStatus());
-        Map<String, Object> auth = authSessions.issue(request, "DRIVER", d.getId(), d.getPhone(), d.getName());
-        Map<String, Object> m = new HashMap<String, Object>();
-        m.put("driver", safeDriver); m.put("vehicle", vehicleMapper.selectById(vehicleId));
-        m.put("user", auth.get("user")); m.put("csrfToken", auth.get("csrfToken"));
-        return Result.ok(m);
-    }
-
-    @GetMapping("/driver/available-vehicles")
-    public Result<List<Map<String, Object>>> availableVehicles() {
-        List<Driver> allDrivers = driverMapper.selectList(null);
-        java.util.Set<Long> assigned = new java.util.HashSet<>();
-        for (Driver d : allDrivers) {
-            if (d.getDefaultVehicleId() != null) assigned.add(d.getDefaultVehicleId());
-        }
-        List<Map<String, Object>> result = new ArrayList<>();
-        List<Vehicle> allVehicles = vehicleMapper.selectList(null);
-        for (Vehicle v : allVehicles) {
-            Map<String, Object> m = new HashMap<>();
-            m.put("vehicleId", v.getId());
-            m.put("plateNo", v.getPlateNo());
-            m.put("lineId", v.getLineId());
-            m.put("assigned", assigned.contains(v.getId()));
-            result.add(m);
-        }
         return Result.ok(result);
     }
 

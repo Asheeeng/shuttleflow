@@ -25,12 +25,21 @@ public class SessionAuthInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI();
         if (!path.startsWith("/api/")) return true;
         if (path.equals("/api/driver/login") || path.equals("/api/admin/login")) return true;
+        if (path.equals("/api/passenger/login")) return true;
         if (path.equals("/api/auth/session")) return true;
-        if (path.equals("/api/driver/register")) return csrf(request, response);
-        if (path.equals("/api/driver/available-vehicles")) return true;
+        if (path.equals("/api/passenger/register")) {
+            HttpSession guestSession = request.getSession(false);
+            if (guestSession == null || !"GUEST".equals(guestSession.getAttribute(AuthSessionService.ROLE)))
+                return reject(response, 401, "UNAUTHENTICATED", "请先建立乘客注册会话");
+            return csrf(request, response);
+        }
         if (isTrustedAiRead(request, path)) return true;
         HttpSession session = request.getSession(false);
         Object role = session == null ? null : session.getAttribute(AuthSessionService.ROLE);
+        if ("/api/vehicles".equals(path) || path.startsWith("/api/vehicle/")) {
+            if (!"ADMIN".equals(role) && !"DISPATCHER".equals(role))
+                return reject(response, 403, "FORBIDDEN", "车辆列表仅限管理角色查看");
+        }
         if (path.startsWith("/api/passenger/")) {
             if (role != null && isMutation(request.getMethod())
                     && !"GUEST".equals(role) && !"PASSENGER".equals(role))
@@ -44,6 +53,12 @@ public class SessionAuthInterceptor implements HandlerInterceptor {
                 return reject(response, 401, "UNAUTHENTICATED", "请先使用管理员或调度员账号登录");
             if (path.startsWith("/api/admin/vehicle/") && !"ADMIN".equals(role))
                 return reject(response, 403, "FORBIDDEN", "该车辆管理操作仅限系统管理员");
+            if (path.startsWith("/api/admin/driver/") && !"ADMIN".equals(role))
+                return reject(response, 403, "FORBIDDEN", "司机账号创建仅限系统管理员");
+            if (path.startsWith("/api/admin/dispatcher/") && !"ADMIN".equals(role))
+                return reject(response, 403, "FORBIDDEN", "调度员账号管理仅限系统管理员");
+            if (path.equals("/api/admin/operators") && !"ADMIN".equals(role))
+                return reject(response, 403, "FORBIDDEN", "管理账号列表仅限系统管理员");
         }
         if (path.startsWith("/api/driver/") && !"DRIVER".equals(role))
             return reject(response, 401, "UNAUTHENTICATED", "请先使用司机账号登录");

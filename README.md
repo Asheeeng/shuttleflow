@@ -6,7 +6,7 @@ MVP闭环：扫码签到 → 司机上报 → 队列融合(守恒) → 规则调
 
 ## 技术栈
 - 后端：Spring Boot 2.7.18 + MyBatis-Plus 3.5.5 + MySQL 8.0 + Redis + WebSocket
-- 前端：Vue3 (CDN) + 原生HTML/CSS/JS，无需node构建
+- 前端：本地 Vue 3.5.45 全局构建 + 原生HTML/CSS/JS，无需Node构建
 - AI服务：规则调度（MVP），后续迭代接入LightGBM/TCN/CUSUM/OR-Tools
 
 ## 线路站点数据
@@ -19,37 +19,39 @@ MVP闭环：扫码签到 → 司机上报 → 队列融合(守恒) → 规则调
 
 ## 快速启动
 
-> 本仓库的初始化脚本包含 `DROP TABLE`，只可用于确认可丢弃的空演示库。不要对已有组内或个人数据库直接执行。登录改造首次启动时会以可重复的 `ALTER TABLE` 增加密码哈希列，并将旧演示密码迁移为 PBKDF2-HMAC-SHA256 哈希；业务数据行不会被删除。
+> 初始化脚本含 `DROP TABLE`，只允许用于新建且确认为空的数据库。已有 V1.1 数据库使用 [V1.2 兼容迁移](backend/src/main/resources/db/migration/V1.2__security_and_idempotency.sql)，不要对组内数据库执行初始化脚本。当前源码与发布配置均不包含生产数据库口令或默认管理员账号。
 
-### 1. 初始化数据库
+### 1. 新建本地空数据库
 ```bash
-mysql -u root -p"Root@123456" < backend/src/main/resources/sql/init.sql
+sudo mysql -e "CREATE DATABASE shuttle_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"
+sudo mysql shuttle_db < backend/src/main/resources/sql/init.sql
 ```
+第二行只适用于新建空库；已有业务库必须先备份并执行可审查迁移。
 
-### 2. 启动Redis（可选，不启动不影响核心功能）
-确保Redis在 localhost:6379 运行（无密码）。未启动时事件总线降级，不影响队列融合和调度。
+### 2. 配置服务端环境变量
+生产部署参考 [`deploy/.env.production.example`](deploy/.env.production.example) 和 [Debian 12 部署手册](docs/deploy/debian12.md)。本机开发可用 `shuttle_app` 最小权限账号；请通过安全环境变量提供 `SHUTTLE_DB_PASSWORD`、`SHUTTLE_AI_SERVICE_TOKEN`。Redis可选，生产环境应设置认证并只监听本机。
 
 ### 3. 编译启动后端
 ```bash
-# 在仓库根目录执行；Windows/macOS/Linux均使用同一相对路径
-mvn -f backend/pom.xml -s maven_settings.xml -DskipTests package
+mvn -f backend/pom.xml -DskipTests package
 java -jar backend/target/shuttle-1.0.0.jar
 ```
-后端启动在 http://localhost:8080。Java需为8或更高版本；源码目标字节码保持Java 8。
+Java源码目标为8；部署建议使用受支持的Java 17运行时。后端默认只监听 `127.0.0.1:8080`，公网访问应经 HTTPS Nginx 反向代理。Python AI默认只监听 `127.0.0.1:8000`。
 
 ### 4. 访问前端
 - 入口页：http://localhost:8080/index.html
 - 登录页：http://localhost:8080/login.html
-- 乘客端：http://localhost:8080/passenger.html（游客访问，无需注册）
-- 司机端：http://localhost:8080/driver.html（未登录时进入司机登录；演示账号 13800000001 至 13800000012，密码 123456）
-- 管理端：http://localhost:8080/admin.html（管理员 admin/admin123；调度员 dispatcher/123456）
+- 乘客登录/注册：http://localhost:8080/login.html?role=passenger
+- 乘客游客访问：http://localhost:8080/passenger.html?guest=1
+- 司机端：http://localhost:8080/driver.html（司机账号由管理员创建并绑定车辆）
+- 管理端：http://localhost:8080/admin.html（首次空管理员表由一次性引导环境变量创建）
 - 仿真台：http://localhost:8080/simulation.html（管理员/调度员登录后访问）
 
-首次启动会把演示账号旧口令转换为 Java 8 自带的 PBKDF2-HMAC-SHA256（310,000 次迭代、每条口令独立随机盐），随后清空旧明文密码列；账号和密码仍保持兼容。司机注册设置的密码至少 8 位。登录使用 HttpOnly 会话 Cookie、服务端角色校验和 CSRF 令牌；退出会使会话失效。调度员可查看运营数据与处理调度任务，车辆状态修改仅系统管理员可操作。
+登录使用 PBKDF2-HMAC-SHA256、HttpOnly 会话 Cookie、会话轮换、CSRF 校验和后端角色权限。乘客可自助注册，也可明确选择游客访问；司机不能公开注册，只能由系统管理员创建账号和车辆绑定。调度员可处理任务，车辆容量与运行状态由系统管理员管理。公开部署前必须轮换历史演示账号、MySQL root 和服务令牌；轮换步骤见 [部署手册](docs/deploy/debian12.md#历史凭据轮换)。
 
 ### Python AI 服务
 
-仿真台通过受保护的 Java 管理接口调用 AI 服务，浏览器不会直连 Python 端口。Java 和 FastAPI 进程必须设置相同的 `SHUTTLE_AI_SERVICE_TOKEN`；FastAPI 默认仅监听 `127.0.0.1:8000`。跨主机部署时应通过环境变量配置相同令牌、`SHUTTLE_AI_SERVICE_URL` 和 `AI_BIND_HOST`，并用防火墙限制服务端口，不要将令牌写入前端或提交到仓库。
+仿真台通过受保护的 Java 管理接口调用 AI 服务，浏览器不会直连 Python 端口。Java 和 FastAPI 进程必须设置相同的 `SHUTTLE_AI_SERVICE_TOKEN`；FastAPI 默认仅监听 `127.0.0.1:8000`。`frontend/vendor/` 中包含固定版本 Vue 生产构建和官方许可证，页面不再依赖 unpkg。
 
 macOS/Linux 示例（在启动 Java 与 Python 的终端都设置同一值）：
 
@@ -82,7 +84,9 @@ $env:SHUTTLE_AI_SERVICE_TOKEN = [Convert]::ToBase64String([Security.Cryptography
 ### 管理端
 - 调度大屏：站点队列TOP10、车辆负载、课表先验、待处理预警
 - 调度台：手动创建调度任务、活跃任务监控、派单/完成
-- 车辆管理：当日运行开关、状态修改
+- 车辆管理：当日运行开关、容量和状态修改
+- 司机账号：管理员创建/绑定车辆、重置密码
+- 账号安全：管理员更新密码并撤销该账号其他活动会话
 - 预警中心：确认/抑制/解除
 - 事件流水：原子事件审计
 

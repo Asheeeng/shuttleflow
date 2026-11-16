@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import javax.servlet.http.HttpServletRequest;
 import com.gzu.shuttle.service.AuthSessionService;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/driver")
@@ -25,54 +26,82 @@ public class DriverController {
     @Autowired private TaskService taskService;
 
     @PostMapping("/arrive")
+    @Transactional(rollbackFor = Exception.class)
     public Result<Vehicle> arrive(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        Long vehicleId = Long.valueOf(body.get("vehicleId").toString());
-        if (!ownsVehicle(request, vehicleId)) return Result.fail(403, "无权操作未绑定车辆");
+        Long vehicleId = longValue(body.get("vehicleId"));
+        if (vehicleId == null) return Result.fail(400, "车辆编号无效");
+        Vehicle vehicle = ownedVehicleForUpdate(request, vehicleId);
+        if (vehicle == null) return Result.fail(403, "无权操作未绑定车辆");
         Long stationId = Long.valueOf(body.get("stationId").toString());
         String direction = (String) body.getOrDefault("direction", "go");
-        sendEvent("arrive", vehicleId, stationId, null, direction, 0, null);
+        sendEvent("arrive", vehicleId, stationId, null, direction, 0, null, request);
         return Result.ok(vehicleMapper.selectById(vehicleId));
     }
 
     @PostMapping("/alight")
+    @Transactional(rollbackFor = Exception.class)
     public Result<Vehicle> alight(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        Long vehicleId = Long.valueOf(body.get("vehicleId").toString());
-        if (!ownsVehicle(request, vehicleId)) return Result.fail(403, "无权操作未绑定车辆");
+        Long vehicleId = longValue(body.get("vehicleId"));
+        if (vehicleId == null) return Result.fail(400, "车辆编号无效");
+        Vehicle vehicle = ownedVehicleForUpdate(request, vehicleId);
+        if (vehicle == null) return Result.fail(403, "无权操作未绑定车辆");
         Long stationId = body.get("stationId") != null ? Long.valueOf(body.get("stationId").toString()) : null;
-        int count = Integer.parseInt(body.getOrDefault("count", 0).toString());
+        int count = intValue(body.getOrDefault("count", 0));
         Integer afterLoad = body.get("afterLoad") != null ? Integer.parseInt(body.get("afterLoad").toString()) : null;
         String direction = (String) body.get("direction");
-        sendEvent("alight", vehicleId, stationId, null, direction, -count, afterLoad);
+        if (count < 0) return Result.fail(400, "下客人数不能为负数");
+        if (afterLoad != null) {
+            if (afterLoad < 0 || afterLoad > vehicle.getCurrentLoad()) return Result.fail(409, "下客后人数必须在0至当前载客人数之间");
+            if (count > 0 && vehicle.getCurrentLoad() - count != afterLoad) return Result.fail(400, "下客人数与校准后人数不一致");
+            count = vehicle.getCurrentLoad() - afterLoad;
+        }
+        if (count > vehicle.getCurrentLoad()) return Result.fail(409, "下客人数超过当前车内人数");
+        sendEvent("alight", vehicleId, stationId, null, direction, -count, vehicle.getCurrentLoad() - count, request);
         return Result.ok(vehicleMapper.selectById(vehicleId));
     }
 
     @PostMapping("/board")
+    @Transactional(rollbackFor = Exception.class)
     public Result<Vehicle> board(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        Long vehicleId = Long.valueOf(body.get("vehicleId").toString());
-        if (!ownsVehicle(request, vehicleId)) return Result.fail(403, "无权操作未绑定车辆");
+        Long vehicleId = longValue(body.get("vehicleId"));
+        if (vehicleId == null) return Result.fail(400, "车辆编号无效");
+        Vehicle vehicle = ownedVehicleForUpdate(request, vehicleId);
+        if (vehicle == null) return Result.fail(403, "无权操作未绑定车辆");
         Long stationId = body.get("stationId") != null ? Long.valueOf(body.get("stationId").toString()) : null;
         Long lineId = body.get("lineId") != null ? Long.valueOf(body.get("lineId").toString()) : null;
-        int count = Integer.parseInt(body.getOrDefault("count", 0).toString());
+        int count = intValue(body.getOrDefault("count", 0));
         Integer afterLoad = body.get("afterLoad") != null ? Integer.parseInt(body.get("afterLoad").toString()) : null;
         String direction = (String) body.get("direction");
-        sendEvent("board", vehicleId, stationId, lineId, direction, count, afterLoad);
+        if (count < 0) return Result.fail(400, "上客人数不能为负数");
+        if (afterLoad != null) {
+            if (afterLoad < vehicle.getCurrentLoad() || afterLoad > vehicle.getCapacity()) return Result.fail(409, "上客后人数超出车辆容量范围");
+            if (count > 0 && vehicle.getCurrentLoad() + count != afterLoad) return Result.fail(400, "上客人数与校准后人数不一致");
+            count = afterLoad - vehicle.getCurrentLoad();
+        }
+        if (vehicle.getCurrentLoad() + count > vehicle.getCapacity()) return Result.fail(409, "车辆剩余座位不足，不能超载");
+        sendEvent("board", vehicleId, stationId, lineId, direction, count, vehicle.getCurrentLoad() + count, request);
         return Result.ok(vehicleMapper.selectById(vehicleId));
     }
 
     @PostMapping("/depart")
+    @Transactional(rollbackFor = Exception.class)
     public Result<Vehicle> depart(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        Long vehicleId = Long.valueOf(body.get("vehicleId").toString());
-        if (!ownsVehicle(request, vehicleId)) return Result.fail(403, "无权操作未绑定车辆");
-        sendEvent("depart", vehicleId, null, null, null, 0, null);
+        Long vehicleId = longValue(body.get("vehicleId"));
+        if (vehicleId == null || ownedVehicleForUpdate(request, vehicleId) == null) return Result.fail(403, "无权操作未绑定车辆");
+        sendEvent("depart", vehicleId, null, null, null, 0, null, request);
         return Result.ok(vehicleMapper.selectById(vehicleId));
     }
 
     @PostMapping("/calibrate")
+    @Transactional(rollbackFor = Exception.class)
     public Result<Vehicle> calibrate(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        Long vehicleId = Long.valueOf(body.get("vehicleId").toString());
-        if (!ownsVehicle(request, vehicleId)) return Result.fail(403, "无权操作未绑定车辆");
+        Long vehicleId = longValue(body.get("vehicleId"));
+        if (vehicleId == null) return Result.fail(400, "车辆编号无效");
+        Vehicle vehicle = ownedVehicleForUpdate(request, vehicleId);
+        if (vehicle == null) return Result.fail(403, "无权操作未绑定车辆");
         int afterLoad = Integer.parseInt(body.get("afterLoad").toString());
-        sendEvent("calibrate", vehicleId, null, null, null, 0, afterLoad);
+        if (afterLoad < 0 || afterLoad > vehicle.getCapacity()) return Result.fail(400, "校准人数不能小于0或超过核定容量");
+        sendEvent("calibrate", vehicleId, null, null, null, 0, afterLoad, request);
         return Result.ok(vehicleMapper.selectById(vehicleId));
     }
 
@@ -94,19 +123,28 @@ public class DriverController {
     public Result<Task> acceptTask(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long vehicleId = Long.valueOf(body.get("vehicleId").toString());
         if (!ownsVehicle(request, vehicleId)) return Result.fail(403, "无权接收其他司机车辆的任务");
-        return Result.ok(taskService.acceptTask(Long.valueOf(body.get("taskId").toString()), vehicleId));
+        Task task = taskService.acceptTask(Long.valueOf(body.get("taskId").toString()), vehicleId);
+        return task == null ? Result.fail(409, "任务已被处理或未指派给当前车辆") : Result.ok(task);
     }
 
     @PostMapping("/task/reject")
     public Result<Task> rejectTask(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         if (!ownsTask(request, Long.valueOf(body.get("taskId").toString()))) return Result.fail(403, "无权处理其他车辆任务");
-        return Result.ok(taskService.rejectTask(Long.valueOf(body.get("taskId").toString()), (String) body.getOrDefault("reason", "")));
+        Long taskId = Long.valueOf(body.get("taskId").toString());
+        Task old = taskMapper.selectById(taskId);
+        if (old == null || old.getVehicleId() == null) return Result.fail(409, "任务当前没有可拒绝的车辆指派");
+        Task result = taskService.rejectTask(taskId, old.getVehicleId(), (String) body.getOrDefault("reason", ""));
+        return result == null ? Result.fail(409, "任务状态已变化，无法拒绝") : Result.ok(result);
     }
 
     @PostMapping("/task/complete")
     public Result<Task> completeTask(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        if (!ownsTask(request, Long.valueOf(body.get("taskId").toString()))) return Result.fail(403, "无权完成其他车辆任务");
-        return Result.ok(taskService.completeTask(Long.valueOf(body.get("taskId").toString())));
+        Long taskId = Long.valueOf(body.get("taskId").toString());
+        if (!ownsTask(request, taskId)) return Result.fail(403, "无权完成其他车辆任务");
+        Task assigned = taskMapper.selectById(taskId);
+        if (assigned == null || assigned.getVehicleId() == null) return Result.fail(409, "任务当前没有车辆指派");
+        Task task = taskService.completeTask(taskId, assigned.getVehicleId());
+        return task == null ? Result.fail(409, "仅执行中的本人车辆任务可以完成") : Result.ok(task);
     }
 
     @PostMapping("/set-running")
@@ -133,15 +171,38 @@ public class DriverController {
                 && driver.getDefaultVehicleId() != null && driver.getDefaultVehicleId().equals(vehicleId);
     }
 
+    private Vehicle ownedVehicleForUpdate(HttpServletRequest request, Long vehicleId) {
+        Object driverId = request.getSession(false) == null ? null
+                : request.getSession(false).getAttribute(AuthSessionService.ID);
+        if (driverId == null) return null;
+        Driver driver = driverMapper.selectById(Long.valueOf(driverId.toString()));
+        if (driver == null || driver.getEnabled() == null || driver.getEnabled() != 1
+                || driver.getDefaultVehicleId() == null || !driver.getDefaultVehicleId().equals(vehicleId)) return null;
+        return vehicleMapper.selectForUpdate(vehicleId);
+    }
+
+    private Long longValue(Object value) {
+        if (value == null) return null;
+        try { return Long.valueOf(value.toString()); } catch (NumberFormatException ignored) { return null; }
+    }
+
+    private int intValue(Object value) {
+        try { return Integer.parseInt(value.toString()); } catch (RuntimeException ignored) { return -1; }
+    }
+
     private boolean ownsTask(HttpServletRequest request, Long taskId) {
         Task task = taskMapper.selectById(taskId);
         return task != null && ownsVehicle(request, task.getVehicleId());
     }
 
-    private void sendEvent(String type, Long vehicleId, Long stationId, Long lineId, String direction, int count, Integer afterLoad) {
+    private void sendEvent(String type, Long vehicleId, Long stationId, Long lineId, String direction,
+                           int count, Integer afterLoad, HttpServletRequest request) {
         Vehicle v = vehicleMapper.selectById(vehicleId);
         ShuttleEvent event = new ShuttleEvent();
-        event.setEventNo("E" + System.currentTimeMillis() + "_" + type + "_" + new Random().nextInt(9999));
+        String idempotencyKey = request.getHeader("Idempotency-Key");
+        if (idempotencyKey == null || !idempotencyKey.matches("[A-Za-z0-9_-]{16,63}"))
+            idempotencyKey = UUID.randomUUID().toString().replace("-", "");
+        event.setEventNo("D" + idempotencyKey);
         event.setType(type);
         event.setSource("driver");
         event.setVehicleId(vehicleId);

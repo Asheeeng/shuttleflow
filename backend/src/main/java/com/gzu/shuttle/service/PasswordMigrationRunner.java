@@ -8,7 +8,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** Adds BCrypt columns and converts legacy demo passwords in place without dropping rows. */
+/** Ensures password hash columns and migrates legacy credentials without dropping account rows. */
 @Component
 public class PasswordMigrationRunner implements InitializingBean {
     private static final Logger log = LoggerFactory.getLogger(PasswordMigrationRunner.class);
@@ -34,6 +34,7 @@ public class PasswordMigrationRunner implements InitializingBean {
     }
 
     private void migrate(String table) {
+        if (!hasColumn(table, "password")) return;
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT id,password,password_hash FROM `" + table + "` WHERE password_hash IS NULL OR password_hash='' ");
         int migrated = 0;
@@ -45,5 +46,10 @@ public class PasswordMigrationRunner implements InitializingBean {
             migrated++;
         }
         log.info("{} 表口令迁移完成：转换 {} 条旧口令", table, migrated);
+    }
+
+    private boolean hasColumn(String table, String column) {
+        List<Map<String, Object>> columns = jdbc.queryForList("SHOW COLUMNS FROM `" + table + "` LIKE ?", column);
+        return !columns.isEmpty();
     }
 }

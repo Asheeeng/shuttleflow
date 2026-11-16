@@ -1,0 +1,16 @@
+[mysqld]
+bind-address = 127.0.0.1
+mysqlx-bind-address = 127.0.0.1
+require_secure_transport = ON
+tls_version = TLSv1.2,TLSv1.3
+max_connections = 80
+innodb_buffer_pool_size = 768M
+innodb_buffer_pool_instances = 1
+innodb_log_file_size = 256M
+innodb_flush_log_at_trx_commit = 1
+slow_query_log = ON
+long_query_time = 1
+log_queries_not_using_indexes = OFF
+performance_schema = ON
+tmp_table_size = 32M
+max_heap_table_size = 32M

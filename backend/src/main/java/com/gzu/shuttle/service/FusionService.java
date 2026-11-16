@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ public class FusionService {
 
     private String qKey(Long sid, Long lid, String dir) { return sid + "_" + lid + "_" + dir; }
 
+    @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> observationUpdate(Long stationId, Long lineId, String direction,
                                                   int observedCount, double observationVariance, String source) {
         Map<String, Object> aiResult = aiClient.kalmanFuse(stationId, lineId, direction, observedCount, observationVariance, source);
@@ -48,7 +50,7 @@ public class FusionService {
         String key = qKey(stationId, lineId, direction);
         QueryWrapper<StationQueue> qw = new QueryWrapper<>();
         qw.eq("station_id", stationId).eq("line_id", lineId).eq("direction", direction);
-        StationQueue q = queueMapper.selectOne(qw);
+        StationQueue q = queueMapper.selectForUpdate(stationId, lineId, direction);
 
         double xPred = q != null ? q.getWaitingCount() : 0;
         double pPred = pMap.getOrDefault(key, 10.0) + Q;
@@ -89,22 +91,8 @@ public class FusionService {
     }
 
     private void updateQueueFromFusion(Long stationId, Long lineId, String direction, int fusedCount, BigDecimal confidence) {
-        QueryWrapper<StationQueue> qw = new QueryWrapper<>();
-        qw.eq("station_id", stationId).eq("line_id", lineId).eq("direction", direction);
-        StationQueue q = queueMapper.selectOne(qw);
-        if (q == null) {
-            q = new StationQueue();
-            q.setStationId(stationId); q.setLineId(lineId); q.setDirection(direction);
-            q.setWaitingCount(fusedCount);
-            q.setConfidence(confidence != null ? confidence : BigDecimal.ONE);
-            q.setLastUpdateTime(LocalDateTime.now());
-            queueMapper.insert(q);
-        } else {
-            q.setWaitingCount(fusedCount);
-            if (confidence != null) q.setConfidence(confidence);
-            q.setLastUpdateTime(LocalDateTime.now());
-            queueMapper.updateById(q);
-        }
+        queueMapper.setAbsolute(stationId, lineId, direction, Math.max(0, fusedCount),
+                confidence != null ? confidence : BigDecimal.ONE);
     }
 
     void onCheckin(ShuttleEvent event) {
@@ -118,7 +106,7 @@ public class FusionService {
     }
 
     void onArrive(ShuttleEvent event) {
-        Vehicle v = vehicleMapper.selectById(event.getVehicleId());
+        Vehicle v = vehicleMapper.selectForUpdate(event.getVehicleId());
         if (v == null) return;
         v.setCurrentStationId(event.getStationId());
         v.setDirection(event.getDirection());
@@ -129,27 +117,31 @@ public class FusionService {
     }
 
     void onAlight(ShuttleEvent event) {
-        Vehicle v = vehicleMapper.selectById(event.getVehicleId());
+        Vehicle v = vehicleMapper.selectForUpdate(event.getVehicleId());
         if (v == null) return;
         int count = event.getCount() != null ? Math.abs(event.getCount()) : 0;
-        v.setCurrentLoad(Math.max(0, v.getCurrentLoad() - count));
-        if (event.getAfterLoad() != null) v.setCurrentLoad(event.getAfterLoad());
+        int nextLoad = event.getAfterLoad() != null ? event.getAfterLoad() : v.getCurrentLoad() - count;
+        if (nextLoad < 0 || nextLoad > v.getCapacity())
+            throw new IllegalStateException("下客后人数超出车辆容量范围");
+        v.setCurrentLoad(nextLoad);
         v.setLastReportTime(LocalDateTime.now());
         vehicleMapper.updateById(v);
         ShuttleWebSocketHandler.broadcast("vehicle_update", v);
     }
 
     void onBoard(ShuttleEvent event) {
-        Vehicle v = vehicleMapper.selectById(event.getVehicleId());
+        Vehicle v = vehicleMapper.selectForUpdate(event.getVehicleId());
         if (v == null) return;
         int count = event.getCount() != null ? event.getCount() : 0;
-        int newLoad = Math.min(v.getCapacity(), v.getCurrentLoad() + count);
+        int newLoad = event.getAfterLoad() != null ? event.getAfterLoad() : v.getCurrentLoad() + count;
+        if (count < 0 || newLoad < v.getCurrentLoad() || newLoad > v.getCapacity())
+            throw new IllegalStateException("上客后人数超出车辆容量范围");
         v.setCurrentLoad(newLoad);
-        if (event.getAfterLoad() != null) v.setCurrentLoad(event.getAfterLoad());
         v.setLastReportTime(LocalDateTime.now());
         vehicleMapper.updateById(v);
         if (event.getStationId() != null && event.getLineId() != null) {
             updateQueue(event.getStationId(), event.getLineId(), event.getDirection(), -count, event.getConfidence());
+            if (count > 0) requestMapper.markBoardedAtStation(event.getStationId(), event.getLineId(), event.getDirection(), count);
             ShuttleWebSocketHandler.broadcast("queue_update",
                     getQueueSnapshot(event.getStationId(), event.getLineId(), event.getDirection()));
         }
@@ -157,7 +149,7 @@ public class FusionService {
     }
 
     void onDepart(ShuttleEvent event) {
-        Vehicle v = vehicleMapper.selectById(event.getVehicleId());
+        Vehicle v = vehicleMapper.selectForUpdate(event.getVehicleId());
         if (v == null) return;
         v.setLastReportTime(LocalDateTime.now());
         vehicleMapper.updateById(v);
@@ -165,9 +157,13 @@ public class FusionService {
     }
 
     void onCalibrate(ShuttleEvent event) {
-        Vehicle v = vehicleMapper.selectById(event.getVehicleId());
+        Vehicle v = vehicleMapper.selectForUpdate(event.getVehicleId());
         if (v == null) return;
-        if (event.getAfterLoad() != null) v.setCurrentLoad(event.getAfterLoad());
+        if (event.getAfterLoad() != null) {
+            if (event.getAfterLoad() < 0 || event.getAfterLoad() > v.getCapacity())
+                throw new IllegalStateException("校准人数超出车辆核定容量");
+            v.setCurrentLoad(event.getAfterLoad());
+        }
         v.setLastReportTime(LocalDateTime.now());
         vehicleMapper.updateById(v);
         ShuttleWebSocketHandler.broadcast("vehicle_update", v);
@@ -176,25 +172,10 @@ public class FusionService {
     private void updateQueue(Long stationId, Long lineId, String direction, int delta, BigDecimal confidence) {
         if (stationId == null || lineId == null || direction == null) return;
         String key = qKey(stationId, lineId, direction);
-        QueryWrapper<StationQueue> qw = new QueryWrapper<>();
-        qw.eq("station_id", stationId).eq("line_id", lineId).eq("direction", direction);
-        StationQueue q = queueMapper.selectOne(qw);
         double pPred = pMap.getOrDefault(key, 10.0) + Q;
         pMap.put(key, pPred);
         double conf = 1.0 / (1.0 + pPred);
-        if (q == null) {
-            q = new StationQueue();
-            q.setStationId(stationId); q.setLineId(lineId); q.setDirection(direction);
-            q.setWaitingCount(Math.max(0, delta));
-            q.setConfidence(BigDecimal.valueOf(conf));
-            q.setLastUpdateTime(LocalDateTime.now());
-            queueMapper.insert(q);
-        } else {
-            q.setWaitingCount(Math.max(0, q.getWaitingCount() + delta));
-            q.setLastUpdateTime(LocalDateTime.now());
-            q.setConfidence(BigDecimal.valueOf(conf));
-            queueMapper.updateById(q);
-        }
+        queueMapper.applyDelta(stationId, lineId, direction, delta, BigDecimal.valueOf(conf));
     }
 
     private Map<String, Object> getQueueSnapshot(Long stationId, Long lineId, String direction) {
@@ -202,7 +183,8 @@ public class FusionService {
         qw.eq("station_id", stationId).eq("line_id", lineId).eq("direction", direction);
         StationQueue q = queueMapper.selectOne(qw);
         Map<String, Object> m = new HashMap<>();
-        if (q != null) { m.put("stationId", q.getStationId()); m.put("waitingCount", q.getWaitingCount()); m.put("confidence", q.getConfidence()); }
+        m.put("stationId", stationId); m.put("lineId", lineId); m.put("direction", direction);
+        if (q != null) { m.put("waitingCount", q.getWaitingCount()); m.put("confidence", q.getConfidence()); }
         return m;
     }
 
