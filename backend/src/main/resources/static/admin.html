@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>校园摆渡车·管理端</title>
+  <title>调度控制台 · ShuttleFlow</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="neo.css">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f0f2f5; }
@@ -54,23 +56,13 @@
     select,input { border:1px solid #ddd; border-radius:6px; padding:6px 10px; font-size:14px; }
   </style>
 </head>
-<body>
+<body class="neo-page neo-admin">
 <div id="app">
   <div class="header">
-    <h1>校园摆渡车·智能动态调度管理端</h1>
-    <span class="user" v-if="admin">{{admin.name}} | <a href="#" @click.prevent="admin=null" style="color:#fff;">退出</a></span>
+    <h1><a class="sf-brand" href="index.html"><span class="sf-mark" aria-hidden="true">SF</span><span>ShuttleFlow · 调度控制台</span></a></h1>
+    <span class="user" v-if="admin">{{admin.name || admin.displayName}} · {{admin.role}} <a href="simulation.html" style="margin-left:14px;">仿真台</a> <button class="btn" type="button" @click="logout">退出</button></span>
   </div>
-  <template v-if="!admin">
-    <div class="login-wrap">
-      <div class="login-box">
-        <h2 style="text-align:center;margin-bottom:20px;">管理员登录</h2>
-        <input v-model="loginForm.username" placeholder="用户名" />
-        <input v-model="loginForm.password" type="password" placeholder="密码" />
-        <button class="btn btn-primary" style="width:100%;height:44px;font-size:16px;" @click="doLogin">登录</button>
-        <p style="text-align:center;margin-top:12px;color:#999;font-size:13px;">admin/admin123 或 dispatcher/123456</p>
-      </div>
-    </div>
-  </template>
+  <template v-if="!admin"><div class="main"><div class="card" role="status">正在载入调度控制台…</div></div></template>
   <template v-else>
     <div class="main">
       <div class="tabs">
@@ -80,6 +72,13 @@
         <div :class="['tab',tab==='alert'?'tab-active':'']" @click="tab='alert'">预警中心</div>
         <div :class="['tab',tab==='event'?'tab-active':'']" @click="tab='event'">事件流水</div>
       </div>
+
+      <section class="sf-kpi-grid" aria-label="运营关键指标">
+        <article class="sf-kpi-card"><span>当前候车需求</span><strong>{{kpi.totalWaiting ?? '—'}}</strong><small>人 · 来自实时队列</small></article>
+        <article class="sf-kpi-card"><span>运行车辆</span><strong>{{kpi.vehicleRunning ?? '—'}}<i>/ {{kpi.vehicleTotal ?? '—'}}</i></strong><small>辆 · 当日运行状态</small></article>
+        <article class="sf-kpi-card"><span>今日任务完成率</span><strong>{{kpi.taskCompleteRate ?? '—'}}<i v-if="kpi.taskCompleteRate!=null">%</i></strong><small>{{kpi.completedToday ?? 0}} 已完成 / {{kpi.todayTasks ?? 0}} 个任务</small></article>
+        <article class="sf-kpi-card"><span>今日事件</span><strong>{{kpi.todayEvents ?? '—'}}</strong><small>条 · 事件流水</small></article>
+      </section>
 
       <!-- 调度大屏 -->
       <template v-if="tab==='dashboard'">
@@ -107,7 +106,7 @@
                 <td>{{v.currentLoad}}/{{v.capacity}}</td>
                 <td><span :class="['badge',loadBadge(v)]">{{Math.round(v.currentLoad*100/v.capacity)}}%</span></td>
                 <td><span :class="['badge',statusBadge(v.status)]">{{v.status}}</span></td>
-                <td><span :class="['toggle',v.runningToday===1?'toggle-on':'toggle-off']" @click="setRunning(v)"></span></td>
+                <td><span v-if="admin.role==='ADMIN'" :class="['toggle',v.runningToday===1?'toggle-on':'toggle-off']" @click="setRunning(v)"></span><span v-else>{{v.runningToday===1?'运行中':'待命'}}</span></td>
               </tr>
             </table>
           </div>
@@ -190,14 +189,15 @@
               <td>{{v.capacity}}</td>
               <td>{{v.currentLoad}}</td>
               <td><span :class="['badge',statusBadge(v.status)]">{{v.status}}</span></td>
-              <td><span :class="['toggle',v.runningToday===1?'toggle-on':'toggle-off']" @click="setRunning(v)"></span></td>
+              <td><span v-if="admin.role==='ADMIN'" :class="['toggle',v.runningToday===1?'toggle-on':'toggle-off']" @click="setRunning(v)"></span><span v-else>{{v.runningToday===1?'运行中':'待命'}}</span></td>
               <td>{{v.currentStationId||'-'}}</td>
               <td>
-                <select @change="setStatus(v,$event.target.value)" style="font-size:12px;">
+                <select v-if="admin.role==='ADMIN'" @change="setStatus(v,$event.target.value)" style="font-size:12px;">
                   <option value="">改状态</option>
                   <option value="offline">offline</option><option value="standby">standby</option>
                   <option value="running">running</option><option value="task">task</option>
                 </select>
+                <span v-else>只读（调度员）</span>
               </td>
             </tr>
           </table>
@@ -245,35 +245,32 @@
   </template>
 </div>
 <script src="config.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="auth-client.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script>
-const {createApp,ref,reactive,onMounted,onUnmounted} = Vue;
-createApp({
+const {createApp,ref,reactive,computed,onMounted,onUnmounted} = Vue;
+const adminApp=createApp({
   setup(){
     const _BASE=window.BACKEND_URL||window.location.origin;
     const API=_BASE+'/api';
-    const admin=ref(null);
-    const loginForm=reactive({username:'admin',password:'admin123'});
+    const boot=window.SHUTTLE_SESSION||{};
+    const admin=ref(boot.user||null);
+    const kpi=ref({});
     const tab=ref('dashboard');
     const vehicles=ref([]), stations=ref([]), lines=ref([]), alerts=ref([]), allAlerts=ref([]);
     const tasks=ref([]), events=ref([]), queues=ref([]);
     const dashboard=ref({}), newTask=reactive({lineId:'',stationId:'',direction:'go',priority:'5',suggestion:''});
-    let ws=null, timer=null;
+    let ws=null, timer=null, disposed=false;
 
-    async function post(url,data){const r=await fetch(API+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return r.json();}
-    async function get(url){const r=await fetch(API+url);return r.json();}
-
-    async function doLogin(){
-      const res=await post('/admin/login',loginForm);
-      if(res.code===200){admin.value=res.data;await loadAll();connectWS();timer=setInterval(loadAll,5000);}
-      else alert(res.msg);
-    }
+    async function post(url,data){const r=await fetch(API+url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(data)});if(r.status===401)window.location.replace('login.html?role=admin&expired=1');return r.json();}
+    async function get(url){const r=await fetch(API+url,{credentials:'same-origin'});if(r.status===401)window.location.replace('login.html?role=admin&expired=1');return r.json();}
+    function logout(){return window.ShuttleAuth.logout();}
 
     async function loadAll(){
-      const [v,s,l,a,t,e,d,q]=await Promise.all([
+      const [v,s,l,a,t,e,d,q,k]=await Promise.all([
         get('/admin/vehicles'),get('/stations'),get('/lines'),
         get('/admin/alerts'),get('/admin/tasks'),get('/admin/events?limit=50'),
-        get('/admin/dashboard'),get('/admin/queues')
+        get('/admin/dashboard'),get('/admin/queues'),get('/admin/stats/kpi')
       ]);
       if(v.code===200)vehicles.value=v.data;
       if(s.code===200)stations.value=s.data;
@@ -283,16 +280,17 @@ createApp({
       if(e.code===200)events.value=e.data;
       if(d.code===200)dashboard.value=d.data;
       if(q.code===200)queues.value=q.data;
+      if(k.code===200)kpi.value=k.data;
       const ar=await get('/admin/alerts?status=all');if(ar.code===200)allAlerts.value=ar.data;
     }
 
     function connectWS(){
       ws=new WebSocket((_BASE.startsWith('https')?'wss://':'ws://')+_BASE.replace(/^https?:\/\//,'')+'/ws');
       ws.onmessage=(e)=>{loadAll();};
-      ws.onclose=()=>{if(admin.value)setTimeout(connectWS,3000);};
+      ws.onclose=()=>{if(admin.value&&!disposed)setTimeout(connectWS,3000);};
     }
 
-    const topQueues=()=>{return queues.value.filter(q=>q.waitingCount>0).sort((a,b)=>b.waitingCount-a.waitingCount).slice(0,10);};
+    const topQueues=computed(()=>queues.value.filter(q=>q.waitingCount>0).sort((a,b)=>b.waitingCount-a.waitingCount).slice(0,10));
     function stationName(id){const s=stations.value.find(x=>x.id===id);return s?s.shortName:id;}
     function loadBadge(v){const r=v.currentLoad*100/v.capacity;return r>=90?'badge-red':r>=70?'badge-yellow':'badge-green';}
     function statusBadge(s){const m={offline:'badge-gray',standby:'badge-blue',running:'badge-green',task:'badge-orange',returning:'badge-yellow'};return m[s]||'badge-gray';}
@@ -311,12 +309,14 @@ createApp({
       if(res.code===200){alert('任务已创建并自动派单');newTask.suggestion='';loadAll();}
     }
 
-    onUnmounted(()=>{if(ws)ws.close();if(timer)clearInterval(timer);});
-    return {admin,loginForm,tab,vehicles,stations,lines,alerts,allAlerts,tasks,events,queues,dashboard,newTask,
-      doLogin,topQueues,stationName,loadBadge,statusBadge,taskBadge,
+    onMounted(()=>{if(admin.value){loadAll();connectWS();timer=setInterval(loadAll,5000);}});
+    onUnmounted(()=>{disposed=true;if(ws)ws.close();if(timer)clearInterval(timer);});
+    return {admin,kpi,tab,vehicles,stations,lines,alerts,allAlerts,tasks,events,queues,dashboard,newTask,logout,
+      topQueues,stationName,loadBadge,statusBadge,taskBadge,
       setRunning,setStatus,confirmAlert,suppressAlert,resolveAlert,assignTask,completeTask,createTask};
   }
-}).mount('#app');
+});
+window.ShuttleAuth.mountProtected(adminApp,'ADMIN');
 </script>
 </body>
 </html>

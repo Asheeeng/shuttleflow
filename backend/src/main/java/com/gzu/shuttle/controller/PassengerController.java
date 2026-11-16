@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import com.gzu.shuttle.service.AuthSessionService;
 
 @RestController
 @RequestMapping("/api/passenger")
@@ -26,7 +29,7 @@ public class PassengerController {
     @Autowired private StationQueueMapper queueMapper;
 
     @PostMapping("/checkin")
-    public Result<Map<String, Object>> checkin(@RequestBody Map<String, Object> body) {
+    public Result<Map<String, Object>> checkin(@RequestBody Map<String, Object> body, HttpServletRequest httpRequest) {
         String qrCode = (String) body.get("qrCode");
         Long lineId = Long.valueOf(body.get("lineId").toString());
         String direction = (String) body.getOrDefault("direction", "go");
@@ -57,6 +60,14 @@ public class PassengerController {
         req.setCreatedAt(LocalDateTime.now());
         req.setUpdatedAt(LocalDateTime.now());
         requestMapper.insert(req);
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null && "GUEST".equals(session.getAttribute(AuthSessionService.ROLE))) {
+            @SuppressWarnings("unchecked")
+            Set<Long> guestRequests = (Set<Long>) session.getAttribute(AuthSessionService.GUEST_REQUESTS);
+            if (guestRequests == null) guestRequests = new HashSet<Long>();
+            guestRequests.add(req.getId());
+            session.setAttribute(AuthSessionService.GUEST_REQUESTS, guestRequests);
+        }
 
         ShuttleEvent event = new ShuttleEvent();
         event.setEventNo("E" + System.currentTimeMillis() + "_" + new Random().nextInt(9999));
@@ -79,13 +90,25 @@ public class PassengerController {
     }
 
     @PostMapping("/cancel")
-    public Result<Void> cancel(@RequestBody Map<String, Object> body) {
+    public Result<Void> cancel(@RequestBody Map<String, Object> body, HttpServletRequest httpRequest) {
         Long requestId = Long.valueOf(body.get("requestId").toString());
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null && "GUEST".equals(session.getAttribute(AuthSessionService.ROLE))) {
+            @SuppressWarnings("unchecked")
+            Set<Long> guestRequests = (Set<Long>) session.getAttribute(AuthSessionService.GUEST_REQUESTS);
+            if (guestRequests == null || !guestRequests.contains(requestId))
+                return Result.fail(403, "只能取消本次访问创建的候车请求");
+        }
         Request req = requestMapper.selectById(requestId);
         if (req == null) return Result.fail("请求不存在");
         req.setStatus("cancelled");
         req.setUpdatedAt(LocalDateTime.now());
         requestMapper.updateById(req);
+        if (session != null && "GUEST".equals(session.getAttribute(AuthSessionService.ROLE))) {
+            @SuppressWarnings("unchecked")
+            Set<Long> guestRequests = (Set<Long>) session.getAttribute(AuthSessionService.GUEST_REQUESTS);
+            if (guestRequests != null) guestRequests.remove(requestId);
+        }
 
         ShuttleEvent event = new ShuttleEvent();
         event.setEventNo("E" + System.currentTimeMillis() + "_c" + new Random().nextInt(9999));

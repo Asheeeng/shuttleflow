@@ -19,6 +19,8 @@ MVP闭环：扫码签到 → 司机上报 → 队列融合(守恒) → 规则调
 
 ## 快速启动
 
+> 本仓库的初始化脚本包含 `DROP TABLE`，只可用于确认可丢弃的空演示库。不要对已有组内或个人数据库直接执行。登录改造首次启动时会以可重复的 `ALTER TABLE` 增加密码哈希列，并将旧演示密码迁移为 PBKDF2-HMAC-SHA256 哈希；业务数据行不会被删除。
+
 ### 1. 初始化数据库
 ```bash
 mysql -u root -p"Root@123456" < backend/src/main/resources/sql/init.sql
@@ -29,22 +31,37 @@ mysql -u root -p"Root@123456" < backend/src/main/resources/sql/init.sql
 
 ### 3. 编译启动后端
 ```bash
-cd backend
-# 方式一：用项目已下载的Maven
-D:/cars/ict-car/demo/maven_dir/apache-maven-3.9.9/bin/mvn clean package -DskipTests -s D:/cars/ict-car/demo/maven_settings.xml
-# 方式二：用系统Maven（需自行安装）
-mvn clean package -DskipTests
-
-# 启动
-java -jar target/shuttle-1.0.0.jar
+# 在仓库根目录执行；Windows/macOS/Linux均使用同一相对路径
+mvn -f backend/pom.xml -s maven_settings.xml -DskipTests package
+java -jar backend/target/shuttle-1.0.0.jar
 ```
-后端启动在 http://localhost:8080
+后端启动在 http://localhost:8080。Java需为8或更高版本；源码目标字节码保持Java 8。
 
 ### 4. 访问前端
 - 入口页：http://localhost:8080/index.html
-- 乘客端：http://localhost:8080/passenger.html
-- 司机端：http://localhost:8080/driver.html （仿真账号：13800000001~012 / 密码123456）
-- 管理端：http://localhost:8080/admin.html （admin/admin123 或 dispatcher/123456）
+- 登录页：http://localhost:8080/login.html
+- 乘客端：http://localhost:8080/passenger.html（游客访问，无需注册）
+- 司机端：http://localhost:8080/driver.html（未登录时进入司机登录；演示账号 13800000001 至 13800000012，密码 123456）
+- 管理端：http://localhost:8080/admin.html（管理员 admin/admin123；调度员 dispatcher/123456）
+- 仿真台：http://localhost:8080/simulation.html（管理员/调度员登录后访问）
+
+首次启动会把演示账号旧口令转换为 Java 8 自带的 PBKDF2-HMAC-SHA256（310,000 次迭代、每条口令独立随机盐），随后清空旧明文密码列；账号和密码仍保持兼容。司机注册设置的密码至少 8 位。登录使用 HttpOnly 会话 Cookie、服务端角色校验和 CSRF 令牌；退出会使会话失效。调度员可查看运营数据与处理调度任务，车辆状态修改仅系统管理员可操作。
+
+### Python AI 服务
+
+仿真台通过受保护的 Java 管理接口调用 AI 服务，浏览器不会直连 Python 端口。Java 和 FastAPI 进程必须设置相同的 `SHUTTLE_AI_SERVICE_TOKEN`；FastAPI 默认仅监听 `127.0.0.1:8000`。跨主机部署时应通过环境变量配置相同令牌、`SHUTTLE_AI_SERVICE_URL` 和 `AI_BIND_HOST`，并用防火墙限制服务端口，不要将令牌写入前端或提交到仓库。
+
+macOS/Linux 示例（在启动 Java 与 Python 的终端都设置同一值）：
+
+```bash
+export SHUTTLE_AI_SERVICE_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+```
+
+Windows PowerShell 示例：
+
+```powershell
+$env:SHUTTLE_AI_SERVICE_TOKEN = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
 
 ## 功能说明
 

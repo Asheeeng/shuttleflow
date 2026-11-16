@@ -67,6 +67,7 @@ CREATE TABLE `driver` (
   `name` VARCHAR(20) NOT NULL,
   `phone` VARCHAR(20),
   `password` VARCHAR(64) NOT NULL DEFAULT '123456',
+  `password_hash` VARCHAR(100) DEFAULT NULL,
   `default_vehicle_id` BIGINT COMMENT '默认绑定车辆',
   `status` VARCHAR(20) NOT NULL DEFAULT 'off' COMMENT 'off/on_duty/driving',
   `enabled` TINYINT NOT NULL DEFAULT 1
@@ -78,6 +79,7 @@ CREATE TABLE `admin` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `username` VARCHAR(30) NOT NULL UNIQUE,
   `password` VARCHAR(64) NOT NULL DEFAULT 'admin123',
+  `password_hash` VARCHAR(100) DEFAULT NULL,
   `name` VARCHAR(20) NOT NULL,
   `role` VARCHAR(20) NOT NULL DEFAULT 'dispatcher' COMMENT 'dispatcher/admin'
 ) ENGINE=InnoDB COMMENT='管理员';

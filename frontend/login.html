@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f1ed">
+  <title>登录 · ShuttleFlow</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="neo.css">
+</head>
+<body class="sf-auth-shell">
+  <main class="sf-auth-frame">
+    <section class="sf-auth-content">
+      <a class="sf-brand" href="index.html">
+        <span class="sf-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 15.5h18l-2-6.2a2 2 0 0 0-1.9-1.4H6.9A2 2 0 0 0 5 9.3L3 15.5Z" stroke="currentColor" stroke-width="2.2"/><path d="M5 15.5v2.3h2v-2.3m10 0v2.3h2v-2.3M7 11h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"/><circle cx="7.5" cy="15.5" r="1" fill="currentColor"/><circle cx="16.5" cy="15.5" r="1" fill="currentColor"/></svg></span>
+        <span>ShuttleFlow</span>
+      </a>
+      <h1 id="page-title">欢迎回来</h1>
+      <p class="sf-auth-subtitle" id="page-subtitle">登录 ShuttleFlow 工作台，继续校园摆渡车调度。</p>
+
+      <div class="sf-role-switch" aria-label="登录角色">
+        <button type="button" id="driver-tab" aria-pressed="false">司机</button>
+        <button type="button" id="admin-tab" aria-pressed="false">管理员 / 调度员</button>
+      </div>
+
+      <form class="sf-auth-form" id="login-form" novalidate>
+        <label class="sf-field" for="identity"><span id="identity-label">手机号</span>
+          <span class="sf-input-wrap"><input id="identity" name="identity" autocomplete="username" inputmode="text" placeholder="输入绑定手机号" required></span>
+        </label>
+        <label class="sf-field" for="password"><span>密码</span>
+          <span class="sf-input-wrap"><input id="password" name="password" type="password" autocomplete="current-password" placeholder="输入登录密码" required><button class="sf-eye" type="button" id="toggle-password" aria-label="显示密码" title="显示密码">◉</button></span>
+        </label>
+        <div class="sf-notice" id="notice" role="status" aria-live="polite"></div>
+        <button class="sf-submit" type="submit" id="submit-button">登录工作台</button>
+      </form>
+
+      <form class="sf-auth-form" id="register-form" hidden novalidate>
+        <label class="sf-field" for="driver-name"><span>司机姓名</span><span class="sf-input-wrap"><input id="driver-name" autocomplete="name" placeholder="输入姓名" required></span></label>
+        <label class="sf-field" for="driver-phone"><span>手机号</span><span class="sf-input-wrap"><input id="driver-phone" inputmode="tel" autocomplete="tel" placeholder="输入手机号" required></span></label>
+        <label class="sf-field" for="driver-password"><span>设置密码（至少 8 位）</span><span class="sf-input-wrap"><input id="driver-password" type="password" autocomplete="new-password" placeholder="设置登录密码" required></span></label>
+        <label class="sf-field" for="driver-vehicle"><span>绑定车辆</span><span class="sf-input-wrap"><select id="driver-vehicle"><option value="">由系统分配可用车辆</option></select></span></label>
+        <div class="sf-notice" id="register-notice" role="status" aria-live="polite"></div>
+        <button class="sf-submit" type="submit" id="register-button">创建司机账号</button>
+      </form>
+
+      <p class="sf-register-note" id="driver-note">司机账号使用绑定手机号登录。新司机注册后将按可用车辆分配规则绑定车辆。</p>
+      <div class="sf-auth-links"><a class="sf-link-button" href="index.html">← 返回角色选择</a><button class="sf-link-button" type="button" id="register-toggle">注册新司机</button><a class="sf-link-button" href="passenger.html">乘客游客访问</a></div>
+    </section>
+
+    <aside class="sf-art" aria-label="ShuttleFlow 校园摆渡车图形">
+      <svg viewBox="0 0 520 570" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+        <rect width="520" height="570" fill="#079cf0"/>
+        <path d="M0 0h520v83H0z" fill="#ffd44d" stroke="#17191d" stroke-width="4"/>
+        <path d="M0 482h520v88H0z" fill="#ffd44d" stroke="#17191d" stroke-width="4"/>
+        <path d="M22 0 104 0 0 102V20zM520 0v101L418 0zM0 570V468l103 102zm520 0H418l102-102z" fill="#fffefa" stroke="#17191d" stroke-width="4"/>
+        <path d="M36 22 96 82M66 11l43 43m328-32-60 60m90-34-43 43M35 542l59-60m-28 77 44-44m326 38-60-60m89 28-43-43" stroke="#17191d" stroke-width="4" stroke-dasharray="5 9"/>
+        <path d="M222 0h76l-38 56zM298 0h76l-76 56zM222 570h76l-38-56zm76 0h76l-76-56z" fill="#17191d"/>
+        <path d="M260 17v536" stroke="#17191d" stroke-width="3" stroke-dasharray="7 10" opacity=".7"/>
+        <path d="M0 151c90 0 118 44 118 103S72 354 0 354" fill="#1ec878" stroke="#17191d" stroke-width="5"/>
+        <path d="M520 146c-87 0-120 43-120 105s47 107 120 107" fill="#f05f5b" stroke="#17191d" stroke-width="5"/>
+        <circle cx="260" cy="286" r="190" fill="#fffefa" stroke="#17191d" stroke-width="5"/>
+        <circle cx="260" cy="286" r="155" fill="#079cf0" stroke="#17191d" stroke-width="5"/>
+        <path d="M260 109 278 198 347 139 312 222 402 212 325 259 404 306 313 296 347 379 278 319 260 409 242 319 173 379 207 296 116 306 195 259 118 212 208 222 173 139 242 198z" fill="#ffd44d" stroke="#17191d" stroke-width="5"/>
+        <g transform="translate(143 246) rotate(-8 117 70)">
+          <rect x="10" y="27" width="214" height="105" rx="19" fill="#fffefa" stroke="#17191d" stroke-width="7"/>
+          <path d="M37 36h142l20 34H31z" fill="#93dcff" stroke="#17191d" stroke-width="5"/>
+          <path d="M112 37v34" stroke="#17191d" stroke-width="5"/>
+          <rect x="25" y="83" width="173" height="29" rx="4" fill="#ffd44d" stroke="#17191d" stroke-width="4"/>
+          <circle cx="56" cy="132" r="17" fill="#17191d"/><circle cx="179" cy="132" r="17" fill="#17191d"/>
+          <circle cx="56" cy="132" r="6" fill="#fffefa"/><circle cx="179" cy="132" r="6" fill="#fffefa"/>
+          <path d="M198 91h20v18h-20z" fill="#f05f5b" stroke="#17191d" stroke-width="3"/>
+        </g>
+        <path d="M38 173c24 14 24 38 0 52m444-52c-24 14-24 38 0 52M38 364c24-14 24-38 0-52m444 52c-24-14-24-38 0-52" fill="none" stroke="#17191d" stroke-width="6"/>
+        <circle cx="260" cy="286" r="12" fill="#17191d"/>
+      </svg>
+      <span class="sf-art-caption">CAMPUS TRANSIT / SHUTTLEFLOW</span>
+    </aside>
+  </main>
+  <script src="config.js"></script>
+  <script src="auth-client.js"></script>
+  <script>
+    (() => {
+      const params = new URLSearchParams(location.search);
+      let role = params.get('role') === 'admin' ? 'admin' : 'driver';
+      const title = document.getElementById('page-title');
+      const subtitle = document.getElementById('page-subtitle');
+      const identity = document.getElementById('identity');
+      const identityLabel = document.getElementById('identity-label');
+      const password = document.getElementById('password');
+      const notice = document.getElementById('notice');
+      const form = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const registerToggle = document.getElementById('register-toggle');
+      const driverTab = document.getElementById('driver-tab');
+      const adminTab = document.getElementById('admin-tab');
+      const driverNote = document.getElementById('driver-note');
+      const next = params.get('next') === 'simulation.html' ? 'simulation.html' : (role === 'admin' ? 'admin.html' : 'driver.html');
+      let busy = false;
+
+      function setRole(value) {
+        role = value;
+        driverTab.setAttribute('aria-pressed', String(role === 'driver'));
+        adminTab.setAttribute('aria-pressed', String(role === 'admin'));
+        title.textContent = role === 'driver' ? '欢迎回来，司机' : '欢迎回来';
+        subtitle.textContent = role === 'driver' ? '使用绑定手机号登录司机工作台。' : '登录 ShuttleFlow 调度控制台。';
+        identityLabel.textContent = role === 'driver' ? '手机号' : '用户名';
+        identity.placeholder = role === 'driver' ? '输入绑定手机号' : '输入管理员用户名';
+        identity.autocomplete = role === 'driver' ? 'tel' : 'username';
+        document.getElementById('register-toggle').hidden = role !== 'driver';
+        driverNote.hidden = role !== 'driver';
+        registerForm.hidden = true;
+        form.hidden = false;
+        notice.textContent = params.get('expired') ? '登录状态已过期，请重新登录。' : '';
+        notice.className = 'sf-notice';
+        identity.focus({preventScroll:true});
+      }
+
+      driverTab.addEventListener('click', () => setRole('driver'));
+      adminTab.addEventListener('click', () => setRole('admin'));
+      document.getElementById('toggle-password').addEventListener('click', (event) => {
+        const visible = password.type === 'password';
+        password.type = visible ? 'text' : 'password';
+        event.currentTarget.setAttribute('aria-label', visible ? '隐藏密码' : '显示密码');
+        event.currentTarget.title = visible ? '隐藏密码' : '显示密码';
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (busy) return;
+        if (!identity.value.trim() || !password.value) { notice.textContent = '请填写账号和密码。'; identity.focus(); return; }
+        busy = true;
+        const button = document.getElementById('submit-button');
+        button.disabled = true; button.textContent = '正在验证…'; notice.textContent = '';
+        try {
+          const endpoint = role === 'driver' ? '/driver/login' : '/admin/login';
+          const body = role === 'driver' ? {phone:identity.value.trim(),password:password.value} : {username:identity.value.trim(),password:password.value};
+          const response = await fetch((window.BACKEND_URL || location.origin) + '/api' + endpoint, {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+          const result = await response.json();
+          if (!response.ok || result.code !== 200) throw new Error(result.msg || '登录失败，请检查账号和密码。');
+          window.SHUTTLE_CSRF = result.data.csrfToken || '';
+          notice.className = 'sf-notice success'; notice.textContent = '登录成功，正在进入工作台…';
+          location.replace(next);
+        } catch (error) { notice.textContent = error.message || '暂时无法连接服务，请稍后重试。'; }
+        finally { busy = false; button.disabled = false; button.textContent = '登录工作台'; }
+      });
+
+      registerToggle.addEventListener('click', async () => {
+        registerForm.hidden = !registerForm.hidden; form.hidden = !registerForm.hidden;
+        registerToggle.textContent = registerForm.hidden ? '注册新司机' : '返回登录';
+        document.getElementById('register-notice').textContent = '';
+        if (!registerForm.hidden) {
+          try {
+            const response = await fetch((window.BACKEND_URL || location.origin) + '/api/driver/available-vehicles', {credentials:'same-origin'});
+            const result = await response.json();
+            if (response.ok && result.code === 200) {
+              const select = document.getElementById('driver-vehicle');
+              select.innerHTML = '<option value="">由系统分配可用车辆</option>';
+              result.data.filter(v => !v.assigned).forEach(v => {
+                const option = document.createElement('option'); option.value = v.vehicleId;
+                option.textContent = v.plateNo + ' · ' + v.lineId + '号线'; select.appendChild(option);
+              });
+            }
+          } catch (_) { /* registration still supports backend automatic assignment */ }
+          document.getElementById('driver-name').focus();
+        }
+      });
+
+      registerForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const msg = document.getElementById('register-notice');
+        const name = document.getElementById('driver-name').value.trim();
+        const phone = document.getElementById('driver-phone').value.trim();
+        const secret = document.getElementById('driver-password').value;
+        const vehicleId = document.getElementById('driver-vehicle').value;
+        if (!name || !phone || secret.length < 8) { msg.textContent = '请填写姓名、手机号，并设置至少 8 位密码。'; return; }
+        const button = document.getElementById('register-button'); button.disabled = true; button.textContent = '正在创建…'; msg.textContent = '';
+        try {
+          const session = await window.ShuttleAuth.readSession(true);
+          const payload = {name,phone,password:secret}; if (vehicleId) payload.vehicleId = Number(vehicleId);
+          const response = await fetch((window.BACKEND_URL || location.origin) + '/api/driver/register', {method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(payload)});
+          const result = await response.json();
+          if (!response.ok || result.code !== 200) throw new Error(result.msg || '注册失败');
+          window.SHUTTLE_CSRF = result.data.csrfToken || session.csrfToken;
+          msg.className = 'sf-notice success'; msg.textContent = '账号已创建，正在打开司机工作台…';
+          location.replace('driver.html');
+        } catch (error) { msg.textContent = error.message || '注册失败，请重试。'; }
+        finally { button.disabled = false; button.textContent = '创建司机账号'; }
+      });
+
+      window.ShuttleAuth.readSession(false).then(session => {
+        if (session.authenticated && session.user) {
+          const allowed = role === 'admin' ? ['ADMIN','DISPATCHER'].includes(session.user.role) : session.user.role === 'DRIVER';
+          if (allowed) { location.replace(next); return; }
+        }
+      }).catch(() => {});
+      setRole(role);
+    })();
+  </script>
+</body>
+</html>

@@ -220,4 +220,26 @@ public class AdminController {
         if (result != null) return Result.ok(result);
         return Result.fail("AI服务不可用");
     }
+
+    @GetMapping("/ai/cusum/status")
+    public Result<Map<String, Object>> aiCusumStatus() {
+        Map<String, Object> result = aiServiceClient.cusumStatus();
+        if (result != null) return Result.ok(result.get("data") instanceof Map
+                ? (Map<String, Object>) result.get("data") : result);
+        return Result.fail("AI服务不可用");
+    }
+
+    @PostMapping("/ai/kalman")
+    public Result<Map<String, Object>> aiKalman(@RequestBody Map<String, Object> body) {
+        Long stationId = Long.valueOf(body.get("station_id").toString());
+        Long lineId = Long.valueOf(body.get("line_id").toString());
+        String direction = (String) body.getOrDefault("direction", "go");
+        int observedCount = Integer.parseInt(body.get("observed_count").toString());
+        double variance = body.get("variance") == null ? 4.0 : Double.parseDouble(body.get("variance").toString());
+        String source = (String) body.getOrDefault("source", "simulation");
+        Map<String, Object> result = aiServiceClient.kalmanFuse(stationId, lineId, direction, observedCount, variance, source);
+        if (result != null) return Result.ok(result.get("data") instanceof Map
+                ? (Map<String, Object>) result.get("data") : result);
+        return Result.fail("AI服务不可用");
+    }
 }

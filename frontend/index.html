@@ -1,127 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>校园摆渡车系统</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
-      background-color: #f5f5f5;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-    .header h1 {
-      font-size: 32px;
-      color: #1976d2;
-      margin-bottom: 8px;
-      font-weight: 600;
-    }
-    .header p {
-      font-size: 14px;
-      color: #888;
-    }
-    .cards {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .card {
-      background-color: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-      width: 260px;
-      padding: 32px 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-    }
-    .card .icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-    .card .title {
-      font-size: 18px;
-      color: #333;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .card .desc {
-      font-size: 13px;
-      color: #888;
-      text-align: center;
-      line-height: 1.6;
-      margin-bottom: 24px;
-      min-height: 42px;
-    }
-    .card .btn {
-      background-color: #1976d2;
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      padding: 10px 24px;
-      cursor: pointer;
-      width: 100%;
-      transition: background-color 0.2s ease;
-    }
-    .card .btn:hover {
-      background-color: #1565c0;
-    }
-    .footer {
-      margin-top: 48px;
-      font-size: 12px;
-      color: #aaa;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f1ed">
+  <title>ShuttleFlow · 校园摆渡车智能调度系统</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="neo.css">
 </head>
-<body>
-  <div id="app">
-    <div class="header">
-      <h1>校园摆渡车系统</h1>
-      <p>请选择您的身份进入对应端</p>
-    </div>
-    <div class="cards">
-      <div class="card" v-for="card in cards" :key="card.title">
-        <div class="icon">{{ card.icon }}</div>
-        <div class="title">{{ card.title }}</div>
-        <div class="desc">{{ card.desc }}</div>
-        <button class="btn" @click="goTo(card.url)">进入{{ card.title }}</button>
+<body class="sf-portal-shell">
+  <main class="sf-portal">
+    <header class="sf-portal-head">
+      <div>
+        <a class="sf-brand" href="index.html" aria-label="ShuttleFlow 首页">
+          <span class="sf-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 15.5h18l-2-6.2a2 2 0 0 0-1.9-1.4H6.9A2 2 0 0 0 5 9.3L3 15.5Z" stroke="currentColor" stroke-width="2.2"/><path d="M5 15.5v2.3h2v-2.3m10 0v2.3h2v-2.3M7 11h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"/><circle cx="7.5" cy="15.5" r="1" fill="currentColor"/><circle cx="16.5" cy="15.5" r="1" fill="currentColor"/></svg></span>
+          <span>ShuttleFlow</span>
+        </a>
+        <div class="sf-eyebrow" style="margin-top:24px">CAMPUS TRANSIT · SMART DISPATCH</div>
+        <h1 class="sf-portal-title">让每一程<br>都有回应。</h1>
+        <p class="sf-portal-subtitle">校园摆渡车智能动态调度系统</p>
       </div>
-    </div>
-    <div class="footer">© 2026 校园摆渡车系统</div>
-  </div>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <script>
-    const { createApp, ref } = Vue;
-    createApp({
-      setup() {
-        const cards = ref([
-          { icon: '🧑', title: '乘客端', desc: '查询线路、扫码签到、查看车辆到站时间', url: 'passenger.html' },
-          { icon: '🚗', title: '司机端', desc: '接单、到站打卡、查看候车乘客信息', url: 'driver.html' },
-          { icon: '⚙️', title: '管理端', desc: '线路管理、车辆调度、数据统计监控', url: 'admin.html' }
-        ]);
-        const goTo = (url) => {
-          window.location.href = url;
-        };
-        return { cards, goTo };
-      }
-    }).mount('#app');
-  </script>
+      <div class="sf-portal-note">选择你的工作入口<br>乘客可直接以游客身份查询与候车</div>
+    </header>
+
+    <section class="sf-role-grid" aria-label="选择使用角色">
+      <article class="sf-role-card">
+        <div class="sf-role-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="9" r="5" stroke="currentColor" stroke-width="2.5"/><path d="M6 28c.7-6.2 4.2-9.5 10-9.5s9.3 3.3 10 9.5H6Z" stroke="currentColor" stroke-width="2.5"/><path d="M22.5 8.5 26 12l-4.5 4.5" stroke="#2563eb" stroke-width="2.5"/></svg></div>
+        <div><h2>乘客端</h2><p>查线路、看车辆到站时间，选择站点后即可一键候车。</p></div>
+        <a href="passenger.html"><span>游客访问</span><span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="sf-role-card">
+        <div class="sf-role-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M4 20h24l-2.5-8a3 3 0 0 0-2.8-2H9.3a3 3 0 0 0-2.8 2L4 20Z" stroke="currentColor" stroke-width="2.5"/><path d="M6 20v4h3v-4m14 0v4h3v-4M9 14h14" stroke="currentColor" stroke-width="2.5"/><circle cx="10" cy="20" r="1.5" fill="currentColor"/><circle cx="22" cy="20" r="1.5" fill="currentColor"/></svg></div>
+        <div><h2>司机工作台</h2><p>查看绑定车辆和调度任务，完成到站、下客及上客上报。</p></div>
+        <a href="login.html?role=driver"><span>司机登录</span><span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="sf-role-card">
+        <div class="sf-role-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 4v4m0 16v4M4 16h4m16 0h4M7.5 7.5l2.8 2.8m11.4 11.4 2.8 2.8m0-17-2.8 2.8m-11.4 11.4-2.8 2.8" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="16" r="6.5" stroke="currentColor" stroke-width="2.5"/></svg></div>
+        <div><h2>调度控制台</h2><p>监控站点需求、车辆状态与预警，安排和跟进调度任务。</p></div>
+        <a href="login.html?role=admin"><span>管理员 / 调度员登录</span><span aria-hidden="true">↗</span></a>
+      </article>
+    </section>
+    <footer class="sf-portal-foot"><span>SHUTTLEFLOW · CAMPUS MOBILITY</span><span>课设演示系统 · 请使用分配的工作账号</span></footer>
+  </main>
 </body>
 </html>

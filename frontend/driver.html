@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>校园摆渡车·司机端</title>
+  <title>司机工作台 · ShuttleFlow</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="neo.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f5f5f5; display:flex; justify-content:center; }
@@ -56,7 +58,7 @@
     .net-weak { background:#fff3e0; color:#ff9800; }
     .net-offline { background:#ffebee; color:#f44336; }
     .net-dot { width:6px; height:6px; border-radius:50%; }
-    .lock-overlay { position:fixed; top:0; left:0; width:375px; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; }
+    .lock-overlay { position:fixed; top:0; left:0; width:100vw; height:100dvh; background:rgba(0,0,0,0.85); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; }
     .lock-icon { font-size:64px; margin-bottom:16px; }
     .lock-text { font-size:18px; font-weight:600; margin-bottom:8px; }
     .lock-sub { font-size:13px; color:#ccc; text-align:center; line-height:1.6; }
@@ -65,35 +67,10 @@
     .speed-btn { flex:1; height:40px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
   </style>
 </head>
-<body>
+<body class="neo-page neo-driver">
 <div id="app">
-  <div class="header">校园摆渡车·司机端</div>
-  <template v-if="!driver">
-    <div class="login-box">
-      <template v-if="!showRegister">
-        <input v-model="loginForm.phone" placeholder="手机号" />
-        <input v-model="loginForm.password" type="password" placeholder="密码" />
-        <button class="btn btn-primary" @click="doLogin">登录</button>
-        <button class="btn" style="background:#e0e0e0;color:#333;margin-top:8px;" @click="showRegister=true">注册新司机</button>
-        <p style="text-align:center;margin-top:16px;color:#999;font-size:13px;">
-          仿真账号：13800000001~012 / 密码123456
-        </p>
-      </template>
-      <template v-else>
-        <input v-model="regForm.name" placeholder="姓名" />
-        <input v-model="regForm.phone" placeholder="手机号" />
-        <input v-model="regForm.password" type="password" placeholder="密码" />
-        <select v-model.number="regForm.vehicleId" style="width:100%;height:44px;border:1px solid #ddd;border-radius:8px;padding:0 12px;font-size:16px;margin-bottom:12px;">
-          <option value="">自动分配车辆</option>
-          <option v-for="v in availableVehicles" :key="v.vehicleId" :value="v.vehicleId" :disabled="v.assigned">
-            {{v.plateNo}}号车 - {{v.lineId}}号线 {{v.assigned?'(已占用)':'(可用)'}}
-          </option>
-        </select>
-        <button class="btn btn-primary" @click="doRegister">注册</button>
-        <button class="btn" style="background:#e0e0e0;color:#333;margin-top:8px;" @click="showRegister=false">返回登录</button>
-      </template>
-    </div>
-  </template>
+  <div class="header"><a class="sf-brand" href="index.html"><span class="sf-mark" aria-hidden="true">SF</span><span>司机工作台</span></a><button class="btn" type="button" @click="logout">退出登录</button></div>
+  <template v-if="!driver"><div class="section" role="status">正在载入司机工作台…</div></template>
   <template v-else>
     <div class="section">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -238,17 +215,15 @@
   </template>
 </div>
 <script src="config.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="auth-client.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script>
 const {createApp,ref,reactive,computed,onMounted,onUnmounted}=Vue;
 const _BASE=window.BACKEND_URL||window.location.origin;
 const API=_BASE+'/api';
-createApp({setup(){
-    const driver=ref(null), vehicle=ref(null);
-    const loginForm=reactive({phone:'13800000001',password:'123456'});
-    const showRegister=ref(false);
-    const regForm=reactive({name:'',phone:'',password:'',vehicleId:''});
-    const availableVehicles=ref([]);
+const driverApp=createApp({setup(){
+    const boot=window.SHUTTLE_SESSION||{};
+    const driver=ref(boot.driver||boot.user||null), vehicle=ref(boot.vehicle||null);
     const stations=ref([]), direction=ref('go');
     const step=ref(0), arriveStationId=ref('');
     const alightCount=ref(0), boardCount=ref(0), calibrateValue=ref(0);
@@ -257,7 +232,7 @@ createApp({setup(){
     const netStatus=ref('good');
     const netLatency=ref(0);
     const pendingCount=ref(0);
-    let ws=null, wsFailCount=0, pollTimer=null, latencyTimer=null;
+    let ws=null, wsFailCount=0, pollTimer=null, latencyTimer=null, disposed=false;
     let idbDB=null;
 
     function initIDB(){
@@ -295,7 +270,9 @@ createApp({setup(){
         const items=req.result;
         for(const item of items){
           try{
-            await fetch(API+item.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item.data)});
+            const response=await fetch(API+item.url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(item.data)});
+            const result=await response.json();
+            if(!response.ok||result.code!==200)break;
             store.delete(item.id);
           }catch(e){break;}
         }
@@ -313,14 +290,17 @@ createApp({setup(){
     const loadStatus=computed(()=>{const r=loadRate.value;return r>=90?'高负载':r>=70?'中等':'正常';});
 
     function setSpeed(v){speed.value=v;}
+    function logout(){return window.ShuttleAuth.logout();}
 
     async function post(url,data){
       const t0=Date.now();
       try{
-        const r=await fetch(API+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        const r=await fetch(API+url,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(data)});
         netLatency.value=Date.now()-t0;
         updateNetStatus();
-        return r.json();
+        const result=await r.json();
+        if(r.status===401){window.location.replace('login.html?role=driver&expired=1');}
+        return result;
       }catch(e){
         netStatus.value='offline';
         cacheAction(url,data);
@@ -330,10 +310,12 @@ createApp({setup(){
     async function get(url){
       const t0=Date.now();
       try{
-        const r=await fetch(API+url);
+        const r=await fetch(API+url,{credentials:'same-origin'});
         netLatency.value=Date.now()-t0;
         updateNetStatus();
-        return r.json();
+        const result=await r.json();
+        if(r.status===401){window.location.replace('login.html?role=driver&expired=1');}
+        return result;
       }catch(e){
         netStatus.value='offline';
         return {code:0,msg:'网络异常'};
@@ -345,32 +327,6 @@ createApp({setup(){
       else if(netLatency.value>500)netStatus.value='weak';
       else netStatus.value='good';
       if(netStatus.value!=='good'&&wsFailCount>=2){startPolling();}
-    }
-
-    async function doLogin(){
-      const res=await post('/driver/login',loginForm);
-      if(res.code===200){driver.value=res.data.driver;if(res.data.vehicle){vehicle.value=res.data.vehicle;calibrateValue.value=vehicle.value.currentLoad;await loadStations();await loadTasks();connectWS();}}
-      else{alert(res.msg);}
-    }
-
-    async function loadAvailableVehicles(){
-      try{
-        const res=await get('/driver/available-vehicles');
-        if(res.code===200)availableVehicles.value=res.data;
-      }catch(e){}
-    }
-
-    async function doRegister(){
-      if(!regForm.phone||!regForm.password){alert('请填写手机号和密码');return;}
-      const data={name:regForm.name,phone:regForm.phone,password:regForm.password};
-      if(regForm.vehicleId)data.vehicleId=regForm.vehicleId;
-      const res=await post('/driver/register',data);
-      if(res.code===200){
-        alert('注册成功！车辆'+(res.data.vehicle?res.data.vehicle.plateNo:'')+'已分配');
-        loginForm.phone=regForm.phone;loginForm.password=regForm.password;
-        showRegister.value=false;
-        await doLogin();
-      }else{alert(res.msg||'注册失败');}
     }
 
     async function loadStations(){
@@ -398,7 +354,7 @@ createApp({setup(){
         ws.onclose=()=>{
           wsFailCount++;
           if(wsFailCount>=2){netStatus.value='weak';startPolling();}
-          setTimeout(connectWS,3000);
+          if(!disposed)setTimeout(connectWS,3000);
         };
       }catch(e){
         wsFailCount++;
@@ -451,16 +407,19 @@ createApp({setup(){
     async function rejectTask(id){const res=await post('/driver/task/reject',{taskId:id,reason:'司机拒单'});if(res.code===200)loadTasks();}
     async function completeTask(id){const res=await post('/driver/task/complete',{taskId:id});if(res.code===200)loadTasks();}
 
+    const handleOnline=()=>{netStatus.value='good';syncPending();};
+    const handleOffline=()=>{netStatus.value='offline';};
     onMounted(()=>{
       initIDB();
-      loadAvailableVehicles();
-      window.addEventListener('online',()=>{netStatus.value='good';syncPending();});
-      window.addEventListener('offline',()=>{netStatus.value='offline';});
+      if(vehicle.value){calibrateValue.value=vehicle.value.currentLoad;loadStations();loadTasks();connectWS();}
+      window.addEventListener('online',handleOnline);
+      window.addEventListener('offline',handleOffline);
     });
-    onUnmounted(()=>{if(ws)ws.close();stopPolling();});
-    return {driver,vehicle,loginForm,showRegister,regForm,availableVehicles,stations,direction,step,arriveStationId,alightCount,boardCount,calibrateValue,tasks,speed,isLocked,netClass,netDotClass,netLabel,pendingCount,setSpeed,syncPending,loadRate,loadColor,loadStatus,doLogin,doRegister,loadAvailableVehicles,toggleRunning,doArrive,doAlight,doBoard,finishStep,doCalibrate,acceptTask,rejectTask,completeTask};
+    onUnmounted(()=>{disposed=true;if(ws)ws.close();stopPolling();window.removeEventListener('online',handleOnline);window.removeEventListener('offline',handleOffline);});
+    return {driver,vehicle,stations,direction,step,arriveStationId,alightCount,boardCount,calibrateValue,tasks,speed,isLocked,netClass,netDotClass,netLabel,pendingCount,setSpeed,logout,syncPending,loadRate,loadColor,loadStatus,toggleRunning,doArrive,doAlight,doBoard,finishStep,doCalibrate,acceptTask,rejectTask,completeTask};
   }
-}).mount('#app');
+});
+window.ShuttleAuth.mountProtected(driverApp,'DRIVER');
 </script>
 </body>
 </html>

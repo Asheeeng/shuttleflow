@@ -1,13 +1,13 @@
 """
 校园摆渡车 AI 智能调度服务 (Python + FastAPI)
 独立部署，通过 HTTP 与 Java 后端通信
-启动: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+启动: python main.py（默认仅监听本机；跨主机部署应单独配置网络策略）
 """
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-import requests, numpy as np, time, logging
+import requests, numpy as np, time, logging, os, secrets
 from predict import DemandPredictor
 from cusum import CusumDetector
 from assign import MultiVehicleAllocator
@@ -16,9 +16,18 @@ from eta import EtaPredictor
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="校园摆渡车AI服务", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-BACKEND = "http://localhost:8080/api"
+BACKEND = os.getenv("SHUTTLE_BACKEND_API_URL", "http://127.0.0.1:8080/api").rstrip("/")
+SERVICE_TOKEN = os.getenv("SHUTTLE_AI_SERVICE_TOKEN", "")
+SERVICE_HEADERS = {"X-Shuttle-Service-Token": SERVICE_TOKEN} if SERVICE_TOKEN else {}
+
+@app.middleware("http")
+async def require_internal_service_token(request: Request, call_next):
+    if request.url.path not in ("/", "/health"):
+        supplied = request.headers.get("X-Shuttle-Service-Token", "")
+        if not SERVICE_TOKEN or not secrets.compare_digest(supplied, SERVICE_TOKEN):
+            return JSONResponse(status_code=503, content={"code":503,"msg":"AI服务内部令牌未配置或无效"})
+    return await call_next(request)
 predictor = DemandPredictor()
 detector = CusumDetector()
 allocator = MultiVehicleAllocator()
@@ -77,7 +86,7 @@ def cusum_status():
 def assign(req: AssignRequest):
     vehicles = []
     try:
-        r = requests.get(f"{BACKEND}/admin/station-vehicles?stationId={req.station_id}", timeout=3)
+        r = requests.get(f"{BACKEND}/admin/station-vehicles?stationId={req.station_id}", headers=SERVICE_HEADERS, timeout=3)
         if r.status_code == 200:
             vehicles = r.json().get("data", [])
     except: pass
@@ -102,7 +111,7 @@ def eta(line_id: int, station_id: int, direction: str = "go"):
 def course_predict():
     """课表先验: 潜在需求 = 人数 × 转化率"""
     try:
-        r = requests.get(f"{BACKEND}/admin/dashboard", timeout=3)
+        r = requests.get(f"{BACKEND}/admin/dashboard", headers=SERVICE_HEADERS, timeout=3)
         if r.status_code == 200:
             data = r.json().get("data", {})
             dispatch = data.get("dispatch", {})
@@ -131,7 +140,7 @@ def course_predict():
 def ablation(station_id: int, line_id: int, direction: str = "go", waiting: int = 20):
     """消融实验: 对比4种策略"""
     try:
-        r = requests.get(f"{BACKEND}/admin/station-vehicles?stationId={station_id}", timeout=3)
+        r = requests.get(f"{BACKEND}/admin/station-vehicles?stationId={station_id}", headers=SERVICE_HEADERS, timeout=3)
         vehicles = r.json().get("data", []) if r.status_code == 200 else []
     except:
         vehicles = []
@@ -142,4 +151,4 @@ def ablation(station_id: int, line_id: int, direction: str = "go", waiting: int 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=os.getenv("AI_BIND_HOST", "127.0.0.1"), port=int(os.getenv("AI_PORT", "8000")))

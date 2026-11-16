@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>校园摆渡车·乘客端</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="neo.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f5f5f5; min-height:100vh; display:flex; justify-content:center; }
@@ -59,11 +61,11 @@
     .line-info { font-size:12px; color:#666; padding:6px 10px; background:#f5f5f5; border-radius:6px; margin-bottom:8px; }
   </style>
 </head>
-<body>
+<body class="neo-page neo-passenger">
 <div id="app">
   <div class="header">
     <button class="back-btn" @click="goBack">←</button>
-    校园摆渡车·乘客端
+    <span class="sf-brand"><span class="sf-mark" aria-hidden="true">SF</span><span>ShuttleFlow · 乘客端</span></span>
   </div>
 
   <div class="section">
@@ -103,7 +105,7 @@
         <div>
           <span class="station-seq">{{s.seq}}</span>
           <span class="station-name">{{s.stationName}}</span>
-          <span style="font-size:11px;color:#aaa;margin-left:4px;" v-if="s.campus==='东'">[东]</span>
+          <span style="font-size:11px;color:#aaa;margin-left:4px;" v-if="s.campus==='east'||s.campus==='东'">[东]</span>
           <span style="font-size:11px;color:#aaa;margin-left:4px;" v-else>[西]</span>
         </div>
         <span class="station-queue">候车 <span class="count">{{getQueueCount(s.stationId)}}</span> 人</span>
@@ -127,8 +129,8 @@
     <div v-if="etaList.length===0" class="empty-tip">暂无即将到达的车辆</div>
     <div v-else class="eta-list">
       <div class="eta-item" v-for="eta in etaList" :key="eta.vehicleId">
-        <span class="eta-plate">{{eta.plateNumber||eta.plateNo||'-'}}</span>
-        <span class="eta-min"><span class="num">{{eta.etaMinutes||eta.etaMin||'-'}}</span> 分钟后到达</span>
+        <span class="eta-plate">{{eta.vehiclePlate||eta.plateNumber||eta.plateNo||'-'}}</span>
+        <span class="eta-min"><span class="num">{{eta.etaMinutes??eta.etaMin??'-'}}</span> 分钟后到达</span>
         <span class="crowd-block" :class="crowdClass(eta.crowdLevel||eta.crowding)"></span>
       </div>
     </div>
@@ -153,7 +155,8 @@
   <div class="toast" v-if="toast.show" :class="toast.type">{{toast.msg}}</div>
 </div>
 <script src="config.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="auth-client.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script>
 const {createApp,ref,reactive,onMounted,onUnmounted,computed}=Vue;
 const _BASE=window.BACKEND_URL||window.location.origin;
@@ -170,10 +173,10 @@ createApp({
     const wsConnected=ref(false);
     const toast=reactive({show:false,msg:'',type:''});
     const currentLine=ref(null);
-    let ws=null, toastTimer=null;
+    let ws=null, toastTimer=null, disposed=false;
 
     const showToast=(msg,type='')=>{toast.msg=msg;toast.type=type;toast.show=true;if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.show=false;},2500);};
-    const crowdClass=(level)=>{if(level==='LOW'||level===0||level==='low')return'crowd-low';if(level==='MID'||level===1||level==='mid')return'crowd-mid';if(level==='HIGH'||level===2||level==='high')return'crowd-high';return'crowd-low';};
+    const crowdClass=(level)=>{if(level==='LOW'||level===0||level==='low')return'crowd-low';if(level==='MID'||level===1||level==='mid'||level==='yellow')return'crowd-mid';if(level==='HIGH'||level===2||level==='high'||level==='red')return'crowd-high';return'crowd-low';};
     const getQueueCount=(stationId)=>{const q=queueList.value.find(x=>x.stationId===stationId&&x.direction===direction.value);return q?(q.count||q.waitingCount||0):0;};
     const filteredQueues=computed(()=>queueList.value.filter(q=>q.lineId===lineId.value));
 
@@ -229,28 +232,33 @@ createApp({
       const qrCode=`QR-${lineId.value}-${direction.value}-${fromStation.value.stationId}-${Date.now()}`;
       try{
         const res=await fetch(`${API_BASE}/passenger/checkin`,{
-          method:'POST',headers:{'Content-Type':'application/json'},
+          method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),
           body:JSON.stringify({qrCode:fromStation.value.qrCode||qrCode,stationId:fromStation.value.stationId,lineId:lineId.value,direction:direction.value})
         });
         const data=await res.json();
-        const result=data.data||data;
-        checkinData.value={requestId:result.requestId||result.id||qrCode,stationName:fromStation.value.stationName,lineName:`${lineId.value}号线`,direction:direction.value};
+        if(!res.ok||data.code!==200)throw new Error(data.msg||'签到失败');
+        const result=data.data||{};
+        const requestId=result.requestId??(result.request&&result.request.id)??result.id;
+        if(requestId==null)throw new Error('签到返回缺少请求ID，请重试');
+        checkinData.value={requestId,stationName:fromStation.value.stationName,lineName:`${lineId.value}号线`,direction:direction.value};
         showToast('签到成功','success');fetchEta();fetchQueue();
-      }catch(e){showToast('签到失败','error');}
+      }catch(e){showToast(e.message||'签到失败','error');}
     };
     const doCancel=async()=>{
       if(!checkinData.value)return;
       try{
-        await fetch(`${API_BASE}/passenger/cancel`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:checkinData.value.requestId})});
+        const res=await fetch(`${API_BASE}/passenger/cancel`,{method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify({requestId:checkinData.value.requestId})});
+        const data=await res.json();
+        if(!res.ok||data.code!==200)throw new Error(data.msg||'取消失败');
         checkinData.value=null;showToast('已取消签到','success');fetchQueue();
-      }catch(e){showToast('取消失败','error');}
+      }catch(e){showToast(e.message||'取消失败','error');}
     };
 
     const connectWs=()=>{
       try{
         ws=new WebSocket(WS_URL);
         ws.onopen=()=>{wsConnected.value=true;};
-        ws.onclose=()=>{wsConnected.value=false;setTimeout(connectWs,3000);};
+        ws.onclose=()=>{wsConnected.value=false;if(!disposed)setTimeout(connectWs,3000);};
         ws.onerror=()=>{wsConnected.value=false;};
         ws.onmessage=(event)=>{
           try{const msg=JSON.parse(event.data);
@@ -262,8 +270,8 @@ createApp({
     };
     const goBack=()=>{window.location.href='index.html';};
 
-    onMounted(()=>{fetchStations();fetchLineInfo();fetchQueue();connectWs();});
-    onUnmounted(()=>{if(ws)ws.close();if(toastTimer)clearTimeout(toastTimer);});
+    onMounted(async()=>{try{await window.ShuttleAuth.passengerSession();}catch(e){showToast('游客会话初始化失败','error');}fetchStations();fetchLineInfo();fetchQueue();connectWs();});
+    onUnmounted(()=>{disposed=true;if(ws)ws.close();if(toastTimer)clearTimeout(toastTimer);});
 
     return{lineId,direction,stations,fromStationId,fromStation,toStationId,toStation,etaList,queueList,filteredQueues,checkinData,wsConnected,toast,currentLine,crowdClass,getQueueCount,selectLine,selectDirection,selectStation,doCheckin,doCancel,goBack};
   }

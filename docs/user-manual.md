@@ -1,8 +1,8 @@
 # 用户操作手册
 
 **项目名称**：校园摆渡车站点客流上报与AI智能动态调度系统
-**版本**：v1.0
-**日期**：2026-11-14
+**版本**：v1.1
+**日期**：2026-11-16
 
 ---
 
@@ -10,9 +10,9 @@
 
 ### 1.1 环境准备
 
-1. 启动 MySQL 8.0（端口 3306）
-2. 启动 Redis 6.2（端口 6379）
-3. 确认数据库 `campus_shuttle` 已创建并执行初始化 SQL
+1. 启动 MySQL 8（端口按本机配置）并准备当前分支使用的 `shuttle_db`。
+2. Redis（默认6379）为可选组件。
+3. 初始化 SQL 含 `DROP TABLE`，只对确认可重建的空演示库执行；不要对现有组内数据执行。首次启动会以追加列方式把旧演示口令迁移为 PBKDF2-HMAC-SHA256 哈希。
 
 ### 1.2 启动后端（Spring Boot）
 
@@ -23,35 +23,32 @@ java -jar shuttle-backend.jar
 - 默认端口：8080
 - 启动成功标志：控制台输出 `Started ShuttleApplication in x seconds`
 
-### 1.3 启动 AI 服务（FastAPI）
+### 1.3 启动 AI 服务（可选，FastAPI）
+
+Java 与 Python 进程必须配置相同的服务间令牌。不要将令牌写进前端文件或提交到仓库。
+
+macOS/Linux 在两个终端分别设置相同的`SHUTTLE_AI_SERVICE_TOKEN`：
 
 ```bash
-cd ai_service
-uvicorn main:app --host 0.0.0.0 --port 8000
+export SHUTTLE_AI_SERVICE_TOKEN="从本地安全配置读取的同一随机令牌"
+cd ai-service
+python main.py
 ```
 
-- 默认端口：8000
-- 启动成功标志：控制台输出 `Uvicorn running on http://0.0.0.0:8000`
+Windows PowerShell 使用`$env:SHUTTLE_AI_SERVICE_TOKEN = "同一随机令牌"`，再运行`python main.py`。AI服务默认仅监听本机`127.0.0.1:8000`；FastAPI业务路由要求内部令牌，浏览器通过Java登录保护的代理访问。
 
-### 1.4 启动前端
+### 1.4 页面访问
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-- 默认端口：5173
-- 浏览器访问 `http://localhost:5173`
-
-### 1.5 访问入口
+前端由Spring Boot从8080端口提供，无需Node、npm或Vite。
 
 | 角色 | 入口 |
 |------|------|
-| 乘客端 | `http://localhost:5173/passenger` |
-| 司机端 | `http://localhost:5173/driver` |
-| 管理端 | `http://localhost:5173/admin` |
-| 仿真台 | `http://localhost:5173/admin/simulation` |
+| 产品门户 | `http://localhost:8080/index.html` |
+| 登录页 | `http://localhost:8080/login.html` |
+| 乘客端（游客） | `http://localhost:8080/passenger.html` |
+| 司机端 | `http://localhost:8080/driver.html` |
+| 管理端 | `http://localhost:8080/admin.html` |
+| 仿真台 | `http://localhost:8080/simulation.html`（需管理员或调度员会话） |
 
 ---
 
@@ -101,8 +98,8 @@ npm run dev
 
 **操作步骤**：
 
-1. 进入司机端 `http://localhost:5173/driver`
-2. 输入工号（如 D003）与密码
+1. 进入司机端 `http://localhost:8080/driver.html`，页面会引导到统一登录页
+2. 输入绑定手机号与密码（演示账号为13800000001至13800000012，密码123456）
 3. 点击「登录」
 4. 系统返回司机对应的车辆与线路信息
 
@@ -111,7 +108,7 @@ npm run dev
 **操作步骤**：
 
 1. 登录后进入「运行设置」页面
-2. 确认线路（系统根据工号自动匹配）
+2. 确认线路（系统根据已登录司机的绑定车辆显示）
 3. 选择班次方向（去向 / 回向）
 4. 点击「开始运行」
 5. 车辆状态变为 `running`，开始接收心跳监测

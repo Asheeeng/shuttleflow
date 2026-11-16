@@ -1,9 +1,15 @@
 # 接口文档
 
 **项目名称**：校园摆渡车站点客流上报与AI智能动态调度系统
-**版本**：v1.0
-**日期**：2026-11-14
-**Base URL**：`http://localhost:8080`（后端） / `http://localhost:8000`（AI 服务）
+**版本**：v1.1
+**日期**：2026-11-16
+**Base URL**：`http://localhost:8080`（浏览器仅访问此服务）；`http://127.0.0.1:8000`（仅 Java 服务端调用的 AI 内部服务）
+
+V1.1 使用服务端 HttpSession，不使用下文旧稿中的 JWT Bearer 约定。登录成功后由浏览器携带 HttpOnly `SHUTTLE_SESSION` Cookie；修改请求必须附带会话返回的`X-Shuttle-CSRF`。司机与管理接口均在后端校验角色，司机接口还校验车辆归属。乘客游客接口可直接查询，写请求在游客会话下校验 CSRF 和请求归属。
+
+浏览器使用`GET /api/auth/session`读取会话，未登录时司机/管理端跳转统一登录页。`POST /api/auth/logout`退出登录。司机登录：`POST /api/driver/login`（手机号、密码）；管理登录：`POST /api/admin/login`（用户名、密码）。
+
+仿真台只通过`/api/admin/ai/*`调用 Python 服务；FastAPI 业务端点要求`X-Shuttle-Service-Token`，令牌仅在 Java 与 Python 的服务端环境配置，不能发给浏览器。旧接口章节中列出的 Python 8000 端点仅用于服务间集成，不能从无认证客户端直接调用。
 
 ---
 
@@ -13,7 +19,9 @@
 
 | Header | 说明 |
 |--------|------|
-| Authorization | `Bearer <JWT>`（除登录外必填） |
+| Cookie | 登录后由浏览器自动携带 HttpOnly `SHUTTLE_SESSION` |
+| X-Shuttle-CSRF | 会话写请求所需；从`/api/auth/session`返回的`csrfToken`读取 |
+| X-Shuttle-Service-Token | 仅 Java/FastAPI 服务间使用，不得放入浏览器 |
 | Content-Type | `application/json` |
 
 ### 1.2 统一响应格式

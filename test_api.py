@@ -1,16 +1,41 @@
-import urllib.request, json, time, sys
+import urllib.request, urllib.parse, urllib.error, http.cookiejar, json, time, sys
 
-BASE = "http://localhost:8080/api"
+BASE = "http://127.0.0.1:8080/api"
+cookies = http.cookiejar.CookieJar()
+client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookies))
+csrf_token = ""
 
 def get(path):
-    with urllib.request.urlopen(f"{BASE}{path}") as r:
+    with client.open(f"{BASE}{path}") as r:
         return json.loads(r.read())
 
 def post(path, data):
     body = json.dumps(data).encode()
-    req = urllib.request.Request(f"{BASE}{path}", data=body, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req) as r:
+    headers = {"Content-Type": "application/json"}
+    if csrf_token and path not in ("/driver/login", "/admin/login"):
+        headers["X-Shuttle-CSRF"] = csrf_token
+    req = urllib.request.Request(f"{BASE}{path}", data=body, headers=headers)
+    with client.open(req) as r:
         return json.loads(r.read())
+
+def login_driver():
+    global csrf_token
+    result = post("/driver/login", {"phone": "13800000001", "password": "123456"})
+    csrf_token = result["data"]["csrfToken"]
+    return result
+
+def login_admin():
+    global csrf_token
+    result = post("/admin/login", {"username": "admin", "password": "admin123"})
+    csrf_token = result["data"]["csrfToken"]
+    return result
+
+def use_guest_session():
+    global csrf_token
+    if csrf_token:
+        post("/auth/logout", {})
+    session = get("/auth/session?guest=true")["data"]
+    csrf_token = session["csrfToken"]
 
 print("=== 线路站点验证 ===")
 for lid in [1, 2, 3]:
@@ -25,7 +50,7 @@ for v in vehicles[:4]:
     print(f"  车牌{v['plateNo']} -> {v['lineId']}号线 容量{v['capacity']}")
 
 print("\n=== 司机登录+设置运行+到站 ===")
-dl = post("/driver/login", {"phone": "13800000001", "password": "123456"})
+dl = login_driver()
 vid = dl["data"]["vehicle"]["id"]
 print(f"司机登录: 车辆{dl['data']['vehicle']['plateNo']}号线{dl['data']['vehicle']['lineId']}")
 post("/driver/set-running", {"vehicleId": vid, "running": True})
@@ -40,8 +65,10 @@ if eta:
     print(f"  首班: 车辆{e['vehiclePlate']} {e['etaMin']}分钟 拥挤{e['crowding']} 负载{e['loadRate']}%")
 
 print("\n=== 乘客签到+队列融合 ===")
+use_guest_session()
 for i in range(5):
     post("/passenger/checkin", {"qrCode": "ST003", "lineId": 1, "direction": "go"})
+login_admin()
 queues = get("/admin/queues")["data"]
 active = [q for q in queues if q["waitingCount"] > 0]
 print(f"5人签到后, 候车站点: {len(active)}个")

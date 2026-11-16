@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.gzu.shuttle.common.Result;
 import com.gzu.shuttle.entity.*;
 import com.gzu.shuttle.mapper.*;
+import com.gzu.shuttle.service.AuthSessionService;
+import com.gzu.shuttle.service.PasswordHashService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,6 +14,8 @@ import java.util.*;
 @RestController
 @RequestMapping("/api")
 public class CommonController {
+    @Autowired private PasswordHashService passwordHashes;
+    @Autowired private AuthSessionService authSessions;
     @Autowired private LineMapper lineMapper;
     @Autowired private StationMapper stationMapper;
     @Autowired private LineStationMapper lsMapper;
@@ -63,33 +67,45 @@ public class CommonController {
     }
 
     @PostMapping("/driver/login")
-    public Result<Map<String, Object>> driverLogin(@RequestBody Map<String, String> body) {
+    public Result<Map<String, Object>> driverLogin(@RequestBody Map<String, String> body, javax.servlet.http.HttpServletRequest request) {
         String phone = body.get("phone");
-        String password = body.get("password");
-        QueryWrapper<Driver> qw = new QueryWrapper<>();
-        qw.eq("phone", phone).eq("password", password).eq("enabled", 1);
+        String supplied = body.get("password");
+        QueryWrapper<Driver> qw = new QueryWrapper<Driver>();
+        qw.eq("phone", phone).eq("enabled", 1);
         Driver d = driverMapper.selectOne(qw);
-        if (d == null) return Result.fail(401, "手机号或密码错误");
+        if (d == null || supplied == null || d.getPasswordHash() == null || !passwordHashes.matches(supplied, d.getPasswordHash()))
+            return Result.fail(401, "手机号或密码错误");
         d.setStatus("on_duty");
         driverMapper.updateById(d);
-        Map<String, Object> m = new HashMap<>();
-        m.put("driver", d);
-        if (d.getDefaultVehicleId() != null) m.put("vehicle", vehicleMapper.selectById(d.getDefaultVehicleId()));
-        return Result.ok(m);
+        Vehicle vehicle = d.getDefaultVehicleId() == null ? null : vehicleMapper.selectById(d.getDefaultVehicleId());
+        Map<String, Object> safeDriver = new HashMap<String, Object>();
+        safeDriver.put("id", d.getId()); safeDriver.put("name", d.getName());
+        safeDriver.put("phone", d.getPhone()); safeDriver.put("defaultVehicleId", d.getDefaultVehicleId());
+        safeDriver.put("status", d.getStatus());
+        Map<String, Object> auth = authSessions.issue(request, "DRIVER", d.getId(), d.getPhone(), d.getName());
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("driver", safeDriver); result.put("vehicle", vehicle);
+        result.put("user", auth.get("user")); result.put("csrfToken", auth.get("csrfToken"));
+        return Result.ok(result);
     }
 
     @PostMapping("/driver/register")
-    public Result<Map<String, Object>> driverRegister(@RequestBody Map<String, Object> body) {
+    public Result<Map<String, Object>> driverRegister(@RequestBody Map<String, Object> body, javax.servlet.http.HttpServletRequest request) {
         String phone = (String) body.get("phone");
         String password = (String) body.get("password");
         String name = (String) body.getOrDefault("name", "");
+        if (phone == null || !phone.matches("^[0-9+ -]{7,20}$")) return Result.fail(400, "请输入有效手机号");
+        if (password == null || password.length() < 8 || password.length() > 128) return Result.fail(400, "新密码长度需为8至128个字符");
         QueryWrapper<Driver> existQw = new QueryWrapper<>();
         existQw.eq("phone", phone);
         if (driverMapper.selectCount(existQw) > 0) return Result.fail("该手机号已注册");
 
         Long vehicleId = null;
-        if (body.get("vehicleId") != null) {
+        if (body.get("vehicleId") != null && !body.get("vehicleId").toString().isEmpty()) {
             vehicleId = Long.valueOf(body.get("vehicleId").toString());
+            QueryWrapper<Driver> assignedCheck = new QueryWrapper<Driver>();
+            assignedCheck.eq("default_vehicle_id", vehicleId);
+            if (driverMapper.selectCount(assignedCheck) > 0) return Result.fail(409, "该车辆已绑定司机");
         } else {
             List<Driver> allDrivers = driverMapper.selectList(null);
             java.util.Set<Long> assignedVehicles = new java.util.HashSet<>();
@@ -106,15 +122,20 @@ public class CommonController {
         Driver d = new Driver();
         d.setName(name);
         d.setPhone(phone);
-        d.setPassword(password);
+        d.setPassword("");
+        d.setPasswordHash(passwordHashes.encode(password));
         d.setDefaultVehicleId(vehicleId);
         d.setStatus("off");
         d.setEnabled(1);
         driverMapper.insert(d);
 
-        Map<String, Object> m = new HashMap<>();
-        m.put("driver", d);
-        m.put("vehicle", vehicleMapper.selectById(vehicleId));
+        Map<String, Object> safeDriver = new HashMap<String, Object>();
+        safeDriver.put("id", d.getId()); safeDriver.put("name", d.getName()); safeDriver.put("phone", d.getPhone());
+        safeDriver.put("defaultVehicleId", d.getDefaultVehicleId()); safeDriver.put("status", d.getStatus());
+        Map<String, Object> auth = authSessions.issue(request, "DRIVER", d.getId(), d.getPhone(), d.getName());
+        Map<String, Object> m = new HashMap<String, Object>();
+        m.put("driver", safeDriver); m.put("vehicle", vehicleMapper.selectById(vehicleId));
+        m.put("user", auth.get("user")); m.put("csrfToken", auth.get("csrfToken"));
         return Result.ok(m);
     }
 
@@ -139,11 +160,23 @@ public class CommonController {
     }
 
     @PostMapping("/admin/login")
-    public Result<Admin> adminLogin(@RequestBody Map<String, String> body) {
-        QueryWrapper<Admin> qw = new QueryWrapper<>();
-        qw.eq("username", body.get("username")).eq("password", body.get("password"));
+    public Result<Map<String, Object>> adminLogin(@RequestBody Map<String, String> body, javax.servlet.http.HttpServletRequest request) {
+        QueryWrapper<Admin> qw = new QueryWrapper<Admin>();
+        qw.eq("username", body.get("username"));
         Admin a = adminMapper.selectOne(qw);
-        if (a == null) return Result.fail(401, "用户名或密码错误");
-        return Result.ok(a);
+        String supplied = body.get("password");
+        if (a == null || supplied == null || a.getPasswordHash() == null || !passwordHashes.matches(supplied, a.getPasswordHash()))
+            return Result.fail(401, "用户名或密码错误");
+        String role;
+        if ("admin".equalsIgnoreCase(a.getRole())) role = "ADMIN";
+        else if ("dispatcher".equalsIgnoreCase(a.getRole())) role = "DISPATCHER";
+        else return Result.fail(403, "该账号未配置有效的管理角色");
+        Map<String, Object> auth = authSessions.issue(request, role, a.getId(), a.getUsername(), a.getName());
+        Map<String, Object> safe = new HashMap<String, Object>();
+        safe.put("id", a.getId()); safe.put("username", a.getUsername()); safe.put("name", a.getName()); safe.put("role", role);
+        Map<String, Object> result = new HashMap<String, Object>(); result.put("admin", safe);
+        result.put("user", auth.get("user")); result.put("csrfToken", auth.get("csrfToken"));
+        return Result.ok(result);
     }
+
 }

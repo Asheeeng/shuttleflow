@@ -24,6 +24,7 @@ public class AiServiceClient {
     @Value("${shuttle.ai.service-url:http://localhost:8000}") private String serviceUrl;
     @Value("${shuttle.ai.enabled:true}") private boolean enabled;
     @Value("${shuttle.ai.timeout-ms:3000}") private int timeoutMs;
+    @Value("${shuttle.ai.service-token:}") private String serviceToken;
 
     private RestTemplate restTemplate;
     private boolean available = false;
@@ -40,7 +41,7 @@ public class AiServiceClient {
     public void checkHealth() {
         if (!enabled) { available = false; return; }
         try {
-            String resp = restTemplate.getForObject(serviceUrl + "/health", String.class);
+            String resp = get(serviceUrl + "/health");
             available = resp != null && resp.contains("ok");
             log.info("AI服务健康检查: {} -> {}", serviceUrl, available ? "可用" : "不可用");
         } catch (Exception e) {
@@ -62,7 +63,7 @@ public class AiServiceClient {
             body.put("observed_count", observedCount);
             body.put("variance", variance);
             body.put("source", source);
-            String resp = restTemplate.postForObject(serviceUrl + "/kalman", body, String.class);
+            String resp = post(serviceUrl + "/kalman", body);
             return parseResp(resp);
         } catch (Exception e) {
             log.warn("AI kalman调用失败，降级: {}", e.getMessage());
@@ -79,7 +80,7 @@ public class AiServiceClient {
             body.put("line_id", lineId);
             body.put("direction", direction);
             body.put("history", history);
-            String resp = restTemplate.postForObject(serviceUrl + "/predict", body, String.class);
+            String resp = post(serviceUrl + "/predict", body);
             return parseResp(resp);
         } catch (Exception e) {
             log.warn("AI predict调用失败，降级: {}", e.getMessage());
@@ -95,7 +96,7 @@ public class AiServiceClient {
             body.put("line_id", lineId);
             body.put("direction", direction);
             body.put("arrival_rate", arrivalRate);
-            String resp = restTemplate.postForObject(serviceUrl + "/cusum", body, String.class);
+            String resp = post(serviceUrl + "/cusum", body);
             return parseResp(resp);
         } catch (Exception e) {
             log.warn("AI cusum调用失败，降级: {}", e.getMessage());
@@ -111,7 +112,7 @@ public class AiServiceClient {
             body.put("line_id", lineId);
             body.put("direction", direction);
             body.put("waiting", waiting);
-            String resp = restTemplate.postForObject(serviceUrl + "/assign", body, String.class);
+            String resp = post(serviceUrl + "/assign", body);
             return parseResp(resp);
         } catch (Exception e) {
             log.warn("AI assign调用失败，降级: {}", e.getMessage());
@@ -122,7 +123,7 @@ public class AiServiceClient {
     public Map<String, Object> coursePredict() {
         if (!available) return null;
         try {
-            String resp = restTemplate.getForObject(serviceUrl + "/course-predict", String.class);
+            String resp = get(serviceUrl + "/course-predict");
             return parseResp(resp);
         } catch (Exception e) {
             log.warn("AI course-predict调用失败: {}", e.getMessage());
@@ -135,12 +136,37 @@ public class AiServiceClient {
         try {
             String url = String.format("%s/ablation?station_id=%d&line_id=%d&direction=%s&waiting=%d",
                     serviceUrl, stationId, lineId, direction, waiting);
-            String resp = restTemplate.getForObject(url, String.class);
+            String resp = get(url);
             return parseResp(resp);
         } catch (Exception e) {
             log.warn("AI ablation调用失败: {}", e.getMessage());
             return null;
         }
+    }
+
+    public Map<String, Object> cusumStatus() {
+        if (!available) return null;
+        try {
+            return parseResp(get(serviceUrl + "/cusum/status"));
+        } catch (Exception e) {
+            log.warn("AI服务CUSUM状态查询失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private HttpHeaders internalHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (serviceToken != null && !serviceToken.isEmpty()) headers.set("X-Shuttle-Service-Token", serviceToken);
+        return headers;
+    }
+
+    private String get(String url) {
+        return restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<Object>(internalHeaders()), String.class).getBody();
+    }
+
+    private String post(String url, Object body) {
+        return restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<Object>(body, internalHeaders()), String.class).getBody();
     }
 
     @SuppressWarnings("unchecked")

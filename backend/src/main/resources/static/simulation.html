@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>校园摆渡车·仿真台与消融实验</title>
+  <title>仿真工作台 · ShuttleFlow</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="neo.css">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f0f2f5; color:#333; }
@@ -71,15 +73,14 @@
     .escalation { padding:8px 10px; background:#ffebee; border-left:3px solid #f44336; border-radius:4px; font-size:13px; margin-top:6px; }
   </style>
 </head>
-<body>
+<body class="neo-page neo-simulation">
 <div id="app">
   <div class="header">
-    <h1>校园摆渡车·仿真台与消融实验</h1>
+    <h1><a class="sf-brand" href="admin.html"><span class="sf-mark" aria-hidden="true">SF</span><span>ShuttleFlow · 仿真台</span></a></h1>
     <div class="meta">
-      <span><span :class="['dot', wsConnected?'dot-on':'dot-off']"></span>WebSocket {{wsConnected?'已连接':'未连接'}}</span>
-      <span>后端: {{apiBase}}</span>
-      <span>AI: {{aiBase}}</span>
+      <span><span :class="['dot', wsConnected?'dot-on':'dot-off']"></span>实时事件 {{wsConnected?'已连接':'未连接'}}</span>
       <span>{{nowTime}}</span>
+      <button class="btn" type="button" @click="logout">退出</button>
     </div>
   </div>
 
@@ -163,7 +164,7 @@
                 <td><b>{{st.st}}</b></td>
                 <td>
                   <span :class="['cusum-cell', st.st>cusum.data.threshold?'cusum-hot':(st.st>cusum.data.threshold*0.6?'cusum-warn':'cusum-ok')]" style="display:inline-block;">
-                    {{st.st>cusum.data.threshold?'突变':(st.st>cusum.data.threshold*0.6?'预警':'正常')}}
+                    {{st.level||'累计量（以服务端预警为准）'}}
                   </span>
                 </td>
               </tr>
@@ -205,6 +206,7 @@
             </tbody>
           </table>
         </div>
+        <div v-if="course.data&&course.data.predictions&&course.data.predictions.length===0" class="loading">当前30分钟窗口暂无下课预测</div>
         <div v-else-if="course.loading" class="loading">加载课表预测...</div>
       </div>
     </div>
@@ -289,8 +291,8 @@
         <div v-if="kalman.data">
           <div class="kv">
             <span><span class="k">观测值:</span><span class="v">{{kalman.data.observedCount}}</span></span>
-            <span><span class="k">先验估计:</span><span class="v">{{kalman.data.previousEstimate}}</span></span>
-            <span><span class="k">融合结果:</span><span class="v" style="color:#4caf50;font-size:15px;">{{kalman.data.fusedCount}}</span></span>
+            <span><span class="k">先验估计:</span><span class="v">{{kalman.data.previousEstimate??'接口未返回'}}</span></span>
+            <span><span class="k">融合结果:</span><span class="v" style="color:#4caf50;font-size:15px;">{{kalman.data.fusedCount??'接口未返回'}}</span></span>
           </div>
           <div class="kv">
             <span><span class="k">卡尔曼增益K:</span><span class="v">{{kalman.data.kalmanGain}}</span></span>
@@ -370,16 +372,18 @@
 </div>
 
 <script src="config.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="auth-client.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script>
 const { createApp, ref, reactive, onMounted, onBeforeUnmount, nextTick } = Vue;
 
-createApp({
+const simulationApp=createApp({
   setup() {
     const _BASE = window.BACKEND_URL || window.location.origin;
     const apiBase = _BASE + '/api';
-    const aiBase = window.AI_SERVICE_URL || ('http://' + window.location.hostname + ':8000');
+    const aiBase = apiBase + '/admin/ai';
     const wsBase = (_BASE.startsWith('https') ? 'wss://' : 'ws://') + _BASE.replace(/^https?:\/\//, '') + '/ws';
+    function logout(){return window.ShuttleAuth.logout();}
 
     const stations = ref([]);
     const lines = ref([]);
@@ -427,7 +431,7 @@ createApp({
 
     async function loadMeta() {
       try {
-        const res = await fetch(apiBase + '/admin/dashboard');
+        const res = await fetch(apiBase + '/admin/dashboard', {credentials:'same-origin'});
         const json = await res.json();
         if (json && json.data) {
           stations.value = json.data.stations || [];
@@ -442,14 +446,21 @@ createApp({
     async function runAblation() {
       abl.loading = true; abl.error = ''; abl.result = null;
       try {
-        const url = aiBase + '/ablation?station_id=' + abl.stationId +
-                    '&line_id=' + abl.lineId +
+        const url = aiBase + '/ablation?stationId=' + abl.stationId +
+                    '&lineId=' + abl.lineId +
                     '&direction=' + abl.direction +
                     '&waiting=' + abl.waiting;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('AI服务返回 ' + res.status);
+        const res = await fetch(url, {credentials:'same-origin'});
+        if (!res.ok) throw new Error('后端返回 ' + res.status);
         const json = await res.json();
-        abl.result = json.data || json;
+        if(json.code!=null&&json.code!==200)throw new Error(json.msg||'消融实验失败');
+        let data=json.data||json;
+        if(data&&data.data!==undefined)data=data.data;
+        if(Array.isArray(data.strategies)){abl.result=data;}
+        else {
+          const names={original:'原始容量',fcfs:'先到先服务',seat_release:'考虑下客释放',seat_release_reserve:'下客释放与下游预留'};
+          abl.result={strategies:Object.keys(names).map(key=>{const result=data[key]||{};return {name:names[key],totalAvailableSeats:result.totalAvailableSeats??0,assignableSeats:result.totalAssignableSeats??0,leftover:result.leftover??abl.waiting,detail:result.message||(result.allocation||[]).map(a=>`${a.plateNo||a.vehicleId}号车上${a.boardCount}人`).join('；')||'无分配记录'};}),conclusion:'以下为本次模拟输入对应的接口实际结果，不代表真实运营效果。'};
+        }
       } catch (e) {
         abl.error = '消融实验调用失败：' + e.message + '（请确认AI服务 ' + aiBase + ' 已启动）';
       } finally { abl.loading = false; }
@@ -458,10 +469,12 @@ createApp({
     async function loadCusum() {
       cusum.loading = true; cusum.error = ''; cusum.data = null;
       try {
-        const res = await fetch(aiBase + '/cusum/status');
-        if (!res.ok) throw new Error('AI服务返回 ' + res.status);
+        const res = await fetch(aiBase + '/cusum/status', {credentials:'same-origin'});
+        if (!res.ok) throw new Error('后端返回 ' + res.status);
         const json = await res.json();
-        cusum.data = json.data || json;
+        if(json.code!=null&&json.code!==200)throw new Error(json.msg||'CUSUM查询失败');
+        const data=json.data||json;
+        cusum.data=Array.isArray(data.stations)?data:{mu0:'按站点维护',threshold:'接口未返回',stations:Object.entries(data).map(([key,value])=>{const stationId=Number(key.split('_')[0]);return {stationId,stationName:stations.value.find(s=>s.id===stationId)?.name||key,mu0:value.mu0,st:value.St??value.st??0,level:value.level};})};
       } catch (e) {
         cusum.error = 'CUSUM加载失败：' + e.message;
       } finally { cusum.loading = false; }
@@ -470,10 +483,13 @@ createApp({
     async function loadCourse() {
       course.loading = true; course.error = ''; course.data = null;
       try {
-        const res = await fetch(aiBase + '/course-predict');
-        if (!res.ok) throw new Error('AI服务返回 ' + res.status);
+        const res = await fetch(aiBase + '/course-predict', {credentials:'same-origin'});
+        if (!res.ok) throw new Error('后端返回 ' + res.status);
         const json = await res.json();
-        course.data = json.data || json;
+        if(json.code!=null&&json.code!==200)throw new Error(json.msg||'课表预测失败');
+        let data=json.data||json;
+        if(data&&data.data!==undefined)data=data.data;
+        course.data=Array.isArray(data)?{currentTime:nowTime.value,window:30,predictions:data.map(p=>({...p,stationName:p.stationName||p.building,expectedFlow:p.expectedFlow??p.potentialDemand}))}:data;
       } catch (e) {
         course.error = '课表预测加载失败：' + e.message;
       } finally { course.loading = false; }
@@ -485,9 +501,10 @@ createApp({
         const url = apiBase + '/admin/assign?stationId=' + assign.stationId +
                     '&lineId=' + assign.lineId +
                     '&direction=' + assign.direction;
-        const res = await fetch(url);
+        const res = await fetch(url, {credentials:'same-origin'});
         if (!res.ok) throw new Error('后端返回 ' + res.status);
         const json = await res.json();
+        if(json.code!=null&&json.code!==200)throw new Error(json.msg||'分配失败');
         assign.data = json.data || json;
       } catch (e) {
         assign.error = '多车分配调用失败：' + e.message;
@@ -499,7 +516,8 @@ createApp({
       try {
         const res = await fetch(aiBase + '/kalman', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          credentials:'same-origin',
+          headers: window.ShuttleAuth.headers({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             station_id: kalman.stationId,
             line_id: kalman.lineId,
@@ -511,6 +529,7 @@ createApp({
         });
         if (!res.ok) throw new Error('AI服务返回 ' + res.status);
         const json = await res.json();
+        if(json.code!=null&&json.code!==200)throw new Error(json.msg||'卡尔曼接口失败');
         kalman.data = json.data || json;
       } catch (e) {
         kalman.error = '卡尔曼融合失败：' + e.message;
@@ -617,7 +636,7 @@ createApp({
     });
 
     return {
-      apiBase, aiBase, stations, lines, nowTime,
+      apiBase, aiBase, wsBase, stations, lines, nowTime, logout,
       wsConnected, wsLogs, wsLogBox,
       abl, cusum, course, assign, kalman, replay,
       runAblation, loadCusum, loadCourse, runAssign, runKalman,
@@ -625,7 +644,8 @@ createApp({
       startRecording, stopRecording, startReplay, pauseReplay, stepReplay, resetReplay, exportReplay
     };
   }
-}).mount('#app');
+});
+window.ShuttleAuth.mountProtected(simulationApp,'ADMIN');
 </script>
 </body>
 </html>
