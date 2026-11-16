@@ -1,0 +1,483 @@
+{
+  "import_date": "2026-11-16",
+  "source": "用户提供的 campus_bus-master",
+  "baseline_branch": "main",
+  "previous_version_branch": "archive/v0.2-2026-11-16",
+  "previous_version_commit": "d1fba353d0e9707551f04833c94675536632943a",
+  "policy": "以组内文件为准；源码及发布包原样导入，.gitignore仅补充本机运行文件忽略规则；保留仓库原LICENSE。",
+  "source_files": [
+    {
+      "path": ".gitignore",
+      "bytes": 244,
+      "sha256": "c1075ea4d44ba441d5349f84c1ea7e68b6a6c072f5d85f613bfa9100fa94ab5f"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3671,
+      "sha256": "2a607c932c51f0f795c8dba48adb42613bae3110d31788558fbe2d000a411315"
+    },
+    {
+      "path": "ai-service/assign.py",
+      "bytes": 6086,
+      "sha256": "1f7cb05d82a81ae3918534ab98e41ef782ee5c26ca3a2e1fe5bcc0ec326c3d54"
+    },
+    {
+      "path": "ai-service/cusum.py",
+      "bytes": 1467,
+      "sha256": "ab3b37ca0f8b308c299f794e92543eea1f9a35a477618b170fdac003e46d3a40"
+    },
+    {
+      "path": "ai-service/eta.py",
+      "bytes": 1496,
+      "sha256": "64bc04b0640b6ce0f56e4edb63751c3f83e810010e43afc3f9c74ba0efd3c670"
+    },
+    {
+      "path": "ai-service/kalman.py",
+      "bytes": 1123,
+      "sha256": "009652c8df14362070c4a702e91a038d8eb28d0b71f3d125574a7f8157467e32"
+    },
+    {
+      "path": "ai-service/main.py",
+      "bytes": 5058,
+      "sha256": "2ae1311029348c9564222d4a34f230e482bf30b9d885cd601c73453de1284632"
+    },
+    {
+      "path": "ai-service/predict.py",
+      "bytes": 1786,
+      "sha256": "25a3ad3847e6bcbd7f95703a3fb280e0c49d10836eb47a25e1d0ccc0dc88cc6a"
+    },
+    {
+      "path": "ai-service/requirements.txt",
+      "bytes": 94,
+      "sha256": "0979399ebb8bc8628f069854e35674edb715cd106ec128f2785965227fd556b1"
+    },
+    {
+      "path": "backend/pom.xml",
+      "bytes": 3089,
+      "sha256": "b5dcd6b3882b2d7a7f7ebbe076455cf4f35285bddbfe81d4e4353ef80382c295"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/ShuttleApplication.java",
+      "bytes": 491,
+      "sha256": "5b9f9b9a49c94a831f2a72fc7eb8de1a698a356a8831d57cbdb297ec6eef7e39"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/common/Result.java",
+      "bytes": 676,
+      "sha256": "a5d704762fcba7207ed1889d335725820969c85597e6589a7b92f6493e05a1ca"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/config/CorsConfig.java",
+      "bytes": 620,
+      "sha256": "ddb602310a65a5e172fded2eecb95ea4c7d060f2bf5bb469f6a3420fc089ec4c"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/config/RedisConfig.java",
+      "bytes": 1061,
+      "sha256": "567681ac65ce5a5f729d730842bbb445bf84b93cd9e5e14a98f53211500df1aa"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/config/WebSocketConfig.java",
+      "bytes": 686,
+      "sha256": "40cd7feab80d0fc1a7e92ad58ae1aa08c7891906d0834775aeccbb9fb462f66d"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/controller/AdminController.java",
+      "bytes": 9762,
+      "sha256": "7a096bf08f69af22e7972501a7b0725d77b20cae668a8c27513e496d378f1a50"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/controller/CommonController.java",
+      "bytes": 6222,
+      "sha256": "315492144e3494cd73bf04643830671eb5b2db012310c87da0f544254aa2e1f0"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/controller/DriverController.java",
+      "bytes": 6204,
+      "sha256": "bf76c79a6f25fca888d85a9cba72e80d56bcaa05b1554d1902105f9c929c06d0"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/controller/PassengerController.java",
+      "bytes": 5475,
+      "sha256": "4f39b2b22bd79664788abec6d466f29e1cfd7482e4d15332461c9a09afd5c7d2"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Admin.java",
+      "bytes": 285,
+      "sha256": "c3271777ac4ca478e687e40d57ed4c30be58438d8c203932b32bb1ceb9f0f443"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Alert.java",
+      "bytes": 471,
+      "sha256": "31e0088d3ac692f0c3cb79d4f4ea424d3eef9e940428cc2234e0788a471d409f"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/CourseSchedule.java",
+      "bytes": 449,
+      "sha256": "7231555586fa2d6144be450eea098b7f75be0669bf4aa1f60679c1a731122546"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Driver.java",
+      "bytes": 350,
+      "sha256": "467acf1c7f69bb8735cba8a9b911f47041c9ef79a3a0dfd9aae4e1e84e84a4ba"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Line.java",
+      "bytes": 452,
+      "sha256": "f4a34e3847049905bf6f8ea66d6e7be6a965102b3c9da950bcf0f4125b268963"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/LineStation.java",
+      "bytes": 360,
+      "sha256": "ed54039306519a63c38563368d3b9fe8c10f6233c9f9594bbeb1dd07f3bfda3b"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Passenger.java",
+      "bytes": 332,
+      "sha256": "ab6a97391b1527831c75645db7bbf035270f52c5e86681b0a60011f985446a33"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Request.java",
+      "bytes": 484,
+      "sha256": "1727922eab63628f3f5846589cfd39507d2cbd129d91a608290aeb3e047c94eb"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/ShuttleEvent.java",
+      "bytes": 635,
+      "sha256": "824b11629f171a3e4de94cf3a5746e26760d366c06cfc5f424bc5a383668cf59"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Station.java",
+      "bytes": 319,
+      "sha256": "7b1545d77e9b25a33bb90145ffbf29fc6641172fd0cad2ad5bb31bc89c5155d9"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/StationQueue.java",
+      "bytes": 447,
+      "sha256": "38d16da76e9cfba6070ca1a73ac1b7823c7b012f0882074c7441c2f48ba99f26"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Stats.java",
+      "bytes": 518,
+      "sha256": "b32bd1192f61ce834877ee0aef3e158c0c1596a2f94fc9bc730ba43417c889bf"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Task.java",
+      "bytes": 674,
+      "sha256": "c3ef8cb18c7a695867e753aa3f346295da0d0da814d0e545f8f65960f1e7325b"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/entity/Vehicle.java",
+      "bytes": 582,
+      "sha256": "3d7e1ad7277af7b5d3a1db6ffed3ee32c19f3fa466216526eb6108861f97f7f5"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/AdminMapper.java",
+      "bytes": 238,
+      "sha256": "1bc36cfb577c893509b67a4c221d22bbd218dc924ab849f394543f292536c2ec"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/AlertMapper.java",
+      "bytes": 238,
+      "sha256": "c7893c41d9ba3307e58faab0d41e4e7590a21821cff0a1f38a92526bc2be0fe7"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/CourseScheduleMapper.java",
+      "bytes": 265,
+      "sha256": "2f097851315b0c92a55a484beffa6e76ff6941c8e5c510199f73906f4e2be46f"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/DriverMapper.java",
+      "bytes": 241,
+      "sha256": "adac38bc36318b6bbe8bfec7b1d1503035f2edbc96546cdd95883d622b63faa1"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/LineMapper.java",
+      "bytes": 235,
+      "sha256": "a1768b62551524c2eec58569170de193eaddfcc02a5c3443490ec7dc35122474"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/LineStationMapper.java",
+      "bytes": 256,
+      "sha256": "8c9470912ca95b9005930150445a26833dba44d7ef5d2e1c7f8f5642bc2d7cc3"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/PassengerMapper.java",
+      "bytes": 250,
+      "sha256": "ef97291fab2499cfaff18aa44f5e8d00d3e2b3c3a36a843cec403ea169b52390"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/RequestMapper.java",
+      "bytes": 244,
+      "sha256": "80e504b0551d2774c1464e0149ad28458e410473c6f74b170c3778c36834f05f"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/ShuttleEventMapper.java",
+      "bytes": 259,
+      "sha256": "35997799444088865567c71ce07337eba77e4803879fb3178f7e01b6b6b34050"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/StationMapper.java",
+      "bytes": 244,
+      "sha256": "23e90d2be7baec52115aa8581494b57b1323d34ab177091c4f5b505e796af11e"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/StationQueueMapper.java",
+      "bytes": 259,
+      "sha256": "90eb6b7219209124253f83af5a4bd2010b638185a8656cd6c04655b59686106f"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/StatsMapper.java",
+      "bytes": 238,
+      "sha256": "d82f18905dfb0decc0efb0dfe9f4fa0964ef6d306b7281e91856add1c298efd5"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/TaskMapper.java",
+      "bytes": 235,
+      "sha256": "30ccbca8a4ca688d8d4fdb29849ab6ddc8b91b40b6f3454f63034ad9d0b57337"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/mapper/VehicleMapper.java",
+      "bytes": 244,
+      "sha256": "255e6ab23aeedcd5cc4cb12e9602b44fee0435a68368247e456a90dd9478f4be"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/AiServiceClient.java",
+      "bytes": 6140,
+      "sha256": "66aee91c71d6ddfc1ecda64a61ed4469784227d3150a678eb8cef142d85d484a"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/AlertService.java",
+      "bytes": 2215,
+      "sha256": "ed297ca7e2e2c88999327de896155822661ba122b13367b4be433dbf938f8cc7"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/DispatchService.java",
+      "bytes": 4965,
+      "sha256": "b9c4e192a100abff419a8a07db5348bc18ed66e10deba0ce42c92f91d7e37c64"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/EtaService.java",
+      "bytes": 4152,
+      "sha256": "5d77dcba63048ed63a6d09969a67931522076ba5a0beb3a2e47ec2980e841534"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/EventService.java",
+      "bytes": 2969,
+      "sha256": "09c92acd5066212cc70dc447197bea04fa87bb86146343eaa26811270be8d9de"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/FusionService.java",
+      "bytes": 12712,
+      "sha256": "1fa02faa98b0628e19f1707031349c0aa9efb3fe221686ebb575196f0017fa7d"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/MultiVehicleAssignService.java",
+      "bytes": 7337,
+      "sha256": "4ed647113ccb8ceaeec94c72fe7588eb6ca4c6b7c8cac89a3794256c008a25a9"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/StatsService.java",
+      "bytes": 13242,
+      "sha256": "686870ebbf312ff277ae00490b555f33a64bd03ebb520534794042909eaadeeb"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/SurgeDetectionService.java",
+      "bytes": 4682,
+      "sha256": "7ce88f619d87bc76662301968b8c2b7a61d1d03840317f1766b577023516fc01"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/service/TaskService.java",
+      "bytes": 8356,
+      "sha256": "68c19559a71585ad2cfbeb683ad700f512239f130e30137d2f7ba6be92dff806"
+    },
+    {
+      "path": "backend/src/main/java/com/gzu/shuttle/websocket/ShuttleWebSocketHandler.java",
+      "bytes": 1867,
+      "sha256": "828aadd3af1a4a8f613ccc7b249fc0232719c56d242bad534a72e3253407116a"
+    },
+    {
+      "path": "backend/src/main/resources/application.yml",
+      "bytes": 949,
+      "sha256": "7cd30c4ba596cdeacb0837e93dc49e7daebfe1ae4afe73cb32153e2f25dc70fd"
+    },
+    {
+      "path": "backend/src/main/resources/sql/init.sql",
+      "bytes": 14608,
+      "sha256": "7b1fd0fbd31dd57431daeb8e131860eaf78c12f57622ef04307e2b97d913144e"
+    },
+    {
+      "path": "backend/src/main/resources/static/admin.html",
+      "bytes": 18052,
+      "sha256": "30c76c32d10a9f56d91c7ca649fbdd51829fe42833b926e327c67b6f27961406"
+    },
+    {
+      "path": "backend/src/main/resources/static/config.js",
+      "bytes": 24,
+      "sha256": "41a926894e73121bd8339c03d8c414ddc28e7899a7bebc50491b16518c5764f9"
+    },
+    {
+      "path": "backend/src/main/resources/static/driver.html",
+      "bytes": 23876,
+      "sha256": "fb5186e04e37e834657d91f87c9fb78871c6a363a8f02e653574bd33610b8069"
+    },
+    {
+      "path": "backend/src/main/resources/static/index.html",
+      "bytes": 3406,
+      "sha256": "fd2287ff4c9aaac2d72e069b777ef987b28dfb68a70c6d237ee49c7fc728c5f6"
+    },
+    {
+      "path": "backend/src/main/resources/static/passenger.html",
+      "bytes": 15032,
+      "sha256": "4465f39e8b4da49d7891dc09fe4fccb415dc02234d525d480567c512333f9d99"
+    },
+    {
+      "path": "backend/src/main/resources/static/simulation.html",
+      "bytes": 30047,
+      "sha256": "425ba5a7891f6dd8a478c9263cb3b7df3d5bddda196b95518e52425f58dfe2e0"
+    },
+    {
+      "path": "backend/start.bat",
+      "bytes": 102,
+      "sha256": "581e8e1dbda51d4233ac2f6825ad22d480c18838fa6f223d9ba54bf638979cd9"
+    },
+    {
+      "path": "docs/api-doc.md",
+      "bytes": 14391,
+      "sha256": "76255890c53b56cf91aa1a246ede6feebc72ed8d5f47db13db0e03b1cbc98452"
+    },
+    {
+      "path": "docs/defense-ppt-outline.md",
+      "bytes": 3864,
+      "sha256": "602c12f61275bd50efefee81a7d50dc1a3da1267f9592b7c9baf840ed51d0461"
+    },
+    {
+      "path": "docs/design-doc.md",
+      "bytes": 19995,
+      "sha256": "dc93897cbc1974d9689be6627f47c8c8d0bc9b8d283c36ddc36da80c8126119b"
+    },
+    {
+      "path": "docs/requirement-spec.md",
+      "bytes": 10818,
+      "sha256": "1052fa441faa28efc4222247e3e15d92e35a12a421956002cda93f117ea4512f"
+    },
+    {
+      "path": "docs/test-report.md",
+      "bytes": 8980,
+      "sha256": "d54b7b684c57ac09fdbcd6faaf089e7e0e5ee197f188320f5e29c72680664abc"
+    },
+    {
+      "path": "docs/user-manual.md",
+      "bytes": 8969,
+      "sha256": "d7e97abeb70a7f1190f4b7bb84b854e6de2b68962ce44c9da14b5a41eb34897e"
+    },
+    {
+      "path": "frontend/admin.html",
+      "bytes": 18052,
+      "sha256": "30c76c32d10a9f56d91c7ca649fbdd51829fe42833b926e327c67b6f27961406"
+    },
+    {
+      "path": "frontend/config.js",
+      "bytes": 24,
+      "sha256": "41a926894e73121bd8339c03d8c414ddc28e7899a7bebc50491b16518c5764f9"
+    },
+    {
+      "path": "frontend/driver.html",
+      "bytes": 23876,
+      "sha256": "fb5186e04e37e834657d91f87c9fb78871c6a363a8f02e653574bd33610b8069"
+    },
+    {
+      "path": "frontend/index.html",
+      "bytes": 3406,
+      "sha256": "fd2287ff4c9aaac2d72e069b777ef987b28dfb68a70c6d237ee49c7fc728c5f6"
+    },
+    {
+      "path": "frontend/passenger.html",
+      "bytes": 15032,
+      "sha256": "4465f39e8b4da49d7891dc09fe4fccb415dc02234d525d480567c512333f9d99"
+    },
+    {
+      "path": "frontend/simulation.html",
+      "bytes": 30047,
+      "sha256": "425ba5a7891f6dd8a478c9263cb3b7df3d5bddda196b95518e52425f58dfe2e0"
+    },
+    {
+      "path": "maven_settings.xml",
+      "bytes": 191,
+      "sha256": "0d2e91e64d194e1ec35e131a6787c239bcb700379577b55e403d8138eb5762b9"
+    },
+    {
+      "path": "release/application.yml",
+      "bytes": 860,
+      "sha256": "aaba6edd3858bc9afda6ed084a8054418738ebb71735a99c8b0997f8022942a2"
+    },
+    {
+      "path": "release/init.sql",
+      "bytes": 14608,
+      "sha256": "7b1fd0fbd31dd57431daeb8e131860eaf78c12f57622ef04307e2b97d913144e"
+    },
+    {
+      "path": "release/shuttle-1.0.0.jar",
+      "bytes": 38019560,
+      "sha256": "f3de9946600bcd95ff2c531dd8615299f51d3f2819b650a45fe12c0a9da6ef1a"
+    },
+    {
+      "path": "release/使用说明.txt",
+      "bytes": 2764,
+      "sha256": "36338a916750d105ba1625492f7d34c37d3adbaee86327c17137f59b82d4e47f"
+    },
+    {
+      "path": "release/部署指南.txt",
+      "bytes": 2467,
+      "sha256": "87021c29b5fc8b4761d2310c0457e2e2c44604c820b49e9335d5dbe8840661c0"
+    },
+    {
+      "path": "test_api.py",
+      "bytes": 2687,
+      "sha256": "559ba330e56bcc32de16b7ce3fa08c6b7a7ddfe41960c126e6cabee92904b930"
+    },
+    {
+      "path": "test_full.py",
+      "bytes": 8094,
+      "sha256": "8d9dac74fbe80345b6a4b1abca2929991549003875f69c81d4287626ad24ab1e"
+    }
+  ],
+  "group_documents": [
+    {
+      "path": "docs/group-materials/仿真数据部分.pdf",
+      "bytes": 246954,
+      "sha256": "b62aab01bb9085a67a7ff99e7fec2f1e10b7378b7f89365e32fd2ec529dcadda"
+    },
+    {
+      "path": "docs/group-materials/使用打开系统.pdf",
+      "bytes": 311829,
+      "sha256": "bfa935f6664e9127d7296b821fc8906fcb346536fbbbf6bc964ecde70f3897dc"
+    },
+    {
+      "path": "docs/group-materials/AI智能体体现.pdf",
+      "bytes": 259166,
+      "sha256": "7d8176ee99a2b77694e1b25c4396ce98ee80e44b34d9bac505279ba20bfd0ad2"
+    }
+  ],
+  "release_embedded_resource_matches_source": {
+    "BOOT-INF/classes/application.yml": {
+      "byte_equal": false,
+      "text_lines_equal": true,
+      "note": "文本内容一致，字节差异来自换行形式"
+    },
+    "BOOT-INF/classes/sql/init.sql": {
+      "byte_equal": false,
+      "text_lines_equal": true,
+      "note": "文本内容一致，字节差异来自换行形式"
+    }
+  },
+  "release_jar_integrity": "ZIP CRC通过；二进制按原文件保留，未替换发布包",
+  "validation": {
+    "java_compile": "PASS: 48 source files, Java 17.0.18 compiler, class major 52 (Java 8 target)",
+    "python_syntax": "PASS: ai-service/*.py, test_api.py, test_full.py",
+    "release_jar_crc": "PASS",
+    "original_source_and_pdfs_hashes": "PASS; .gitignore has documented local-only ignore additions",
+    "runtime_and_database": "NOT EXECUTED",
+    "group_test_report": "preserved, not independently reproduced"
+  }
+}

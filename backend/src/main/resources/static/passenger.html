@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>校园摆渡车·乘客端</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f5f5f5; min-height:100vh; display:flex; justify-content:center; }
+    #app { width:100%; max-width:420px; min-height:100vh; background:#f5f5f5; display:flex; flex-direction:column; position:relative; }
+    .header { background:#1976d2; color:#fff; padding:16px; text-align:center; font-size:18px; font-weight:600; box-shadow:0 2px 4px rgba(0,0,0,0.1); position:relative; }
+    .back-btn { position:absolute; left:12px; top:14px; background:transparent; border:none; color:#fff; font-size:16px; cursor:pointer; padding:4px 8px; }
+    .section { background:#fff; margin:10px; border-radius:8px; padding:14px; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+    .section-title { font-size:15px; color:#333; font-weight:600; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; }
+    .section-title .badge { font-size:12px; color:#1976d2; font-weight:normal; }
+    .tabs { display:flex; gap:6px; margin-bottom:10px; }
+    .tab { flex:1; padding:8px 0; text-align:center; font-size:13px; border:1px solid #1976d2; border-radius:8px; background:#fff; color:#1976d2; cursor:pointer; }
+    .tab.active { background:#1976d2; color:#fff; }
+    .dir-tabs { display:flex; gap:6px; margin-bottom:10px; }
+    .dir-tab { flex:1; padding:8px 0; text-align:center; font-size:13px; border:1px solid #ff9800; border-radius:8px; background:#fff; color:#ff9800; cursor:pointer; }
+    .dir-tab.active { background:#ff9800; color:#fff; }
+    .station-list { display:flex; flex-direction:column; gap:6px; }
+    .station-item { display:flex; align-items:center; justify-content:space-between; padding:10px; border-radius:8px; background:#f9f9f9; cursor:pointer; border:2px solid transparent; }
+    .station-item:hover { background:#eef6fc; }
+    .station-item.selected { background:#e3f2fd; border-color:#1976d2; }
+    .station-item.dest { background:#fff3e0; border-color:#ff9800; }
+    .station-name { font-size:14px; color:#333; }
+    .station-queue { font-size:12px; color:#888; }
+    .station-queue .count { color:#ff9800; font-weight:600; }
+    .station-seq { font-size:11px; color:#aaa; margin-right:6px; }
+    .eta-list { display:flex; flex-direction:column; gap:6px; }
+    .eta-item { display:flex; align-items:center; padding:10px; border-radius:8px; background:#f9f9f9; gap:10px; }
+    .eta-plate { font-size:14px; color:#333; font-weight:600; width:70px; }
+    .eta-min { font-size:13px; color:#666; flex:1; }
+    .eta-min .num { color:#1976d2; font-weight:600; font-size:16px; }
+    .crowd-block { width:24px; height:24px; border-radius:4px; }
+    .crowd-low { background:#4caf50; } .crowd-mid { background:#ff9800; } .crowd-high { background:#f44336; }
+    .empty-tip { text-align:center; font-size:13px; color:#aaa; padding:14px 0; }
+    .action-bar { padding:10px; display:flex; gap:8px; background:#fff; box-shadow:0 -2px 4px rgba(0,0,0,0.06); }
+    .btn { flex:1; padding:12px 0; border:none; border-radius:8px; font-size:14px; cursor:pointer; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .btn-primary { background:#1976d2; color:#fff; }
+    .btn-danger { background:#f44336; color:#fff; }
+    .btn-success { background:#4caf50; color:#fff; }
+    .checkin-status { padding:10px; margin:10px; border-radius:8px; background:#e8f5e9; border:1px solid #4caf50; font-size:13px; color:#2e7d32; }
+    .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 20px; border-radius:8px; font-size:14px; z-index:999; }
+    .toast.error { background:#f44336; } .toast.success { background:#4caf50; }
+    .ws-status { font-size:11px; padding:2px 8px; border-radius:10px; background:#e0e0e0; color:#666; }
+    .ws-status.online { background:#4caf50; color:#fff; }
+    .ws-status.offline { background:#f44336; color:#fff; }
+    .route-box { padding:10px; background:#f0f7ff; border-radius:8px; margin-bottom:8px; font-size:13px; color:#555; }
+    .route-box .from { color:#1976d2; font-weight:600; }
+    .route-box .to { color:#ff9800; font-weight:600; }
+    .queue-list { display:flex; flex-direction:column; gap:4px; }
+    .queue-item { display:flex; justify-content:space-between; font-size:13px; padding:6px 10px; background:#f9f9f9; border-radius:6px; }
+    .queue-item .name { color:#333; }
+    .queue-item .count { color:#ff9800; font-weight:600; }
+    .loc-info { font-size:12px; color:#888; padding:4px 0; }
+    .line-info { font-size:12px; color:#666; padding:6px 10px; background:#f5f5f5; border-radius:6px; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <button class="back-btn" @click="goBack">←</button>
+    校园摆渡车·乘客端
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      线路选择
+      <span class="ws-status" :class="wsConnected?'online':'offline'">{{wsConnected?'WS已连接':'WS未连接'}}</span>
+    </div>
+    <div class="tabs">
+      <div class="tab" :class="{active:lineId===1}" @click="selectLine(1)">1号线</div>
+      <div class="tab" :class="{active:lineId===2}" @click="selectLine(2)">2号线</div>
+      <div class="tab" :class="{active:lineId===3}" @click="selectLine(3)">3号线</div>
+    </div>
+    <div class="dir-tabs">
+      <div class="dir-tab" :class="{active:direction==='go'}" @click="selectDirection('go')">去向</div>
+      <div class="dir-tab" :class="{active:direction==='back'}" @click="selectDirection('back')">回向</div>
+    </div>
+    <div class="line-info" v-if="currentLine">
+      {{currentLine.name}} · {{direction==='go'?'去程':'返程'}} · 共{{stations.length}}站
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      选择站点
+      <span class="badge">{{stations.length}} 站</span>
+    </div>
+    <div class="route-box" v-if="fromStation||toStation">
+      <span class="from">起：{{fromStation?fromStation.stationName:'未选'}}</span>
+      → <span class="to">终：{{toStation?toStation.stationName:'未选'}}</span>
+    </div>
+    <div v-if="stations.length===0" class="empty-tip">暂无站点数据</div>
+    <div v-else class="station-list">
+      <div class="station-item"
+           v-for="s in stations" :key="s.stationId"
+           :class="{selected: fromStationId===s.stationId, dest: toStationId===s.stationId}"
+           @click="selectStation(s)">
+        <div>
+          <span class="station-seq">{{s.seq}}</span>
+          <span class="station-name">{{s.stationName}}</span>
+          <span style="font-size:11px;color:#aaa;margin-left:4px;" v-if="s.campus==='东'">[东]</span>
+          <span style="font-size:11px;color:#aaa;margin-left:4px;" v-else>[西]</span>
+        </div>
+        <span class="station-queue">候车 <span class="count">{{getQueueCount(s.stationId)}}</span> 人</span>
+      </div>
+    </div>
+    <div style="font-size:12px;color:#888;margin-top:8px;">
+      💡 点击站点选择为候车站（起点），再点另一站点设为目的地
+    </div>
+  </div>
+
+  <div v-if="checkinData" class="checkin-status">
+    ✅ 已签到：{{checkinData.stationName}}（{{checkinData.lineName}}·{{checkinData.direction==='go'?'去向':'回向'}}）
+    <div style="font-size:11px;color:#888;margin-top:4px;">请求ID：{{checkinData.requestId}}</div>
+  </div>
+
+  <div class="section" v-if="fromStation">
+    <div class="section-title">
+      车辆到站预估(ETA)
+      <span class="badge">{{fromStation.stationName}}</span>
+    </div>
+    <div v-if="etaList.length===0" class="empty-tip">暂无即将到达的车辆</div>
+    <div v-else class="eta-list">
+      <div class="eta-item" v-for="eta in etaList" :key="eta.vehicleId">
+        <span class="eta-plate">{{eta.plateNumber||eta.plateNo||'-'}}</span>
+        <span class="eta-min"><span class="num">{{eta.etaMinutes||eta.etaMin||'-'}}</span> 分钟后到达</span>
+        <span class="crowd-block" :class="crowdClass(eta.crowdLevel||eta.crowding)"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">候车人数（当前线路）</div>
+    <div v-if="filteredQueues.length===0" class="empty-tip">暂无候车数据</div>
+    <div v-else class="queue-list">
+      <div class="queue-item" v-for="q in filteredQueues" :key="q.stationId+'-'+q.direction">
+        <span class="name">{{q.stationName||q.name||'站点'+q.stationId}} [{{q.direction==='go'?'去':'回'}}]</span>
+        <span class="count">{{q.count||q.waitingCount||0}} 人</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" :disabled="!fromStation" @click="doCheckin">扫码签到</button>
+    <button class="btn btn-danger" :disabled="!checkinData" @click="doCancel">取消签到</button>
+  </div>
+
+  <div class="toast" v-if="toast.show" :class="toast.type">{{toast.msg}}</div>
+</div>
+<script src="config.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const {createApp,ref,reactive,onMounted,onUnmounted,computed}=Vue;
+const _BASE=window.BACKEND_URL||window.location.origin;
+const API_BASE=_BASE+'/api';
+const WS_URL=(_BASE.startsWith('https')?'wss://':'ws://')+_BASE.replace(/^https?:\/\//,'')+'/ws';
+createApp({
+  setup(){
+    const lineId=ref(1), direction=ref('go');
+    const stations=ref([]);
+    const fromStationId=ref(null), fromStation=ref(null);
+    const toStationId=ref(null), toStation=ref(null);
+    const etaList=ref([]), queueList=ref([]);
+    const checkinData=ref(null);
+    const wsConnected=ref(false);
+    const toast=reactive({show:false,msg:'',type:''});
+    const currentLine=ref(null);
+    let ws=null, toastTimer=null;
+
+    const showToast=(msg,type='')=>{toast.msg=msg;toast.type=type;toast.show=true;if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.show=false;},2500);};
+    const crowdClass=(level)=>{if(level==='LOW'||level===0||level==='low')return'crowd-low';if(level==='MID'||level===1||level==='mid')return'crowd-mid';if(level==='HIGH'||level===2||level==='high')return'crowd-high';return'crowd-low';};
+    const getQueueCount=(stationId)=>{const q=queueList.value.find(x=>x.stationId===stationId&&x.direction===direction.value);return q?(q.count||q.waitingCount||0):0;};
+    const filteredQueues=computed(()=>queueList.value.filter(q=>q.lineId===lineId.value));
+
+    const fetchStations=async()=>{
+      try{
+        const res=await fetch(`${API_BASE}/line/${lineId.value}/stations?direction=${direction.value}`);
+        const data=await res.json();
+        stations.value=data.data||[];
+      }catch(e){showToast('获取站点失败','error');stations.value=[];}
+    };
+    const fetchLineInfo=async()=>{
+      try{
+        const res=await fetch(`${API_BASE}/lines`);
+        const data=await res.json();
+        const lines=data.data||[];
+        currentLine.value=lines.find(l=>l.id===lineId.value)||null;
+      }catch(e){}
+    };
+    const fetchQueue=async()=>{
+      try{
+        const res=await fetch(`${API_BASE}/passenger/queue`);
+        const data=await res.json();
+        queueList.value=data.data||[];
+      }catch(e){queueList.value=[];}
+    };
+    const fetchEta=async()=>{
+      const sid=fromStationId.value;
+      if(!sid){etaList.value=[];return;}
+      try{
+        const res=await fetch(`${API_BASE}/passenger/eta?lineId=${lineId.value}&stationId=${sid}&direction=${direction.value}`);
+        const data=await res.json();
+        etaList.value=data.data||[];
+      }catch(e){etaList.value=[];}
+    };
+
+    const selectLine=(id)=>{if(lineId.value===id)return;lineId.value=id;resetSelection();fetchStations();fetchLineInfo();};
+    const selectDirection=(dir)=>{if(direction.value===dir)return;direction.value=dir;resetSelection();fetchStations();};
+    const resetSelection=()=>{fromStationId.value=null;fromStation.value=null;toStationId.value=null;toStation.value=null;etaList.value=[];};
+    const selectStation=(s)=>{
+      if(!fromStationId.value){
+        fromStationId.value=s.stationId;fromStation.value=s;fetchEta();
+      }else if(fromStationId.value===s.stationId){
+        fromStationId.value=null;fromStation.value=null;etaList.value=[];
+      }else if(!toStationId.value){
+        toStationId.value=s.stationId;toStation.value=s;
+      }else{
+        resetSelection();fromStationId.value=s.stationId;fromStation.value=s;fetchEta();
+      }
+    };
+
+    const doCheckin=async()=>{
+      if(!fromStation.value){showToast('请先选择候车站点','error');return;}
+      const qrCode=`QR-${lineId.value}-${direction.value}-${fromStation.value.stationId}-${Date.now()}`;
+      try{
+        const res=await fetch(`${API_BASE}/passenger/checkin`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({qrCode:fromStation.value.qrCode||qrCode,stationId:fromStation.value.stationId,lineId:lineId.value,direction:direction.value})
+        });
+        const data=await res.json();
+        const result=data.data||data;
+        checkinData.value={requestId:result.requestId||result.id||qrCode,stationName:fromStation.value.stationName,lineName:`${lineId.value}号线`,direction:direction.value};
+        showToast('签到成功','success');fetchEta();fetchQueue();
+      }catch(e){showToast('签到失败','error');}
+    };
+    const doCancel=async()=>{
+      if(!checkinData.value)return;
+      try{
+        await fetch(`${API_BASE}/passenger/cancel`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:checkinData.value.requestId})});
+        checkinData.value=null;showToast('已取消签到','success');fetchQueue();
+      }catch(e){showToast('取消失败','error');}
+    };
+
+    const connectWs=()=>{
+      try{
+        ws=new WebSocket(WS_URL);
+        ws.onopen=()=>{wsConnected.value=true;};
+        ws.onclose=()=>{wsConnected.value=false;setTimeout(connectWs,3000);};
+        ws.onerror=()=>{wsConnected.value=false;};
+        ws.onmessage=(event)=>{
+          try{const msg=JSON.parse(event.data);
+            if(msg.type==='queue_update')fetchQueue();
+            else if(msg.type==='vehicle_update')fetchEta();
+          }catch(e){}
+        };
+      }catch(e){wsConnected.value=false;}
+    };
+    const goBack=()=>{window.location.href='index.html';};
+
+    onMounted(()=>{fetchStations();fetchLineInfo();fetchQueue();connectWs();});
+    onUnmounted(()=>{if(ws)ws.close();if(toastTimer)clearTimeout(toastTimer);});
+
+    return{lineId,direction,stations,fromStationId,fromStation,toStationId,toStation,etaList,queueList,filteredQueues,checkinData,wsConnected,toast,currentLine,crowdClass,getQueueCount,selectLine,selectDirection,selectStation,doCheckin,doCancel,goBack};
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

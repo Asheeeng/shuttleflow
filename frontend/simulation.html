@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校园摆渡车·仿真台与消融实验</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f0f2f5; color:#333; }
+    .header { background:#1976d2; color:#fff; padding:14px 28px; display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { font-size:22px; font-weight:600; }
+    .header .meta { font-size:13px; display:flex; gap:18px; align-items:center; }
+    .header .meta .dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; vertical-align:middle; }
+    .dot-on { background:#76ff03; }
+    .dot-off { background:#ffcdd2; }
+    .main { padding:18px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+    .card { background:#fff; border-radius:8px; padding:18px; box-shadow:0 1px 4px rgba(0,0,0,0.08); margin-bottom:16px; }
+    .card h3 { font-size:16px; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+    .card h3 .tag { font-size:11px; padding:2px 8px; border-radius:4px; background:#e3f2fd; color:#1976d2; }
+    .row { display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+    label { font-size:13px; color:#555; min-width:64px; }
+    select, input { border:1px solid #ddd; border-radius:6px; padding:7px 10px; font-size:13px; height:34px; background:#fff; }
+    select { min-width:120px; }
+    input[type="number"] { width:96px; }
+    .btn { border:none; border-radius:6px; cursor:pointer; font-size:13px; padding:8px 18px; height:34px; }
+    .btn-primary { background:#1976d2; color:#fff; }
+    .btn-success { background:#4caf50; color:#fff; }
+    .btn-warning { background:#ff9800; color:#fff; }
+    .btn-danger { background:#f44336; color:#fff; }
+    .btn:disabled { background:#bdbdbd; cursor:not-allowed; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { background:#fafafa; padding:9px 10px; text-align:left; font-weight:600; border-bottom:2px solid #eee; }
+    td { padding:9px 10px; border-bottom:1px solid #f0f0f0; }
+    tr:hover { background:#f5f5f5; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; color:#fff; }
+    .strat-0 { background:#1976d2; }
+    .strat-1 { background:#ff9800; }
+    .strat-2 { background:#4caf50; }
+    .strat-3 { background:#9c27b0; }
+    .strat-row-0 { border-left:4px solid #1976d2; }
+    .strat-row-1 { border-left:4px solid #ff9800; }
+    .strat-row-2 { border-left:4px solid #4caf50; }
+    .strat-row-3 { border-left:4px solid #9c27b0; }
+    .kv { display:flex; gap:18px; flex-wrap:wrap; font-size:13px; margin-bottom:8px; }
+    .kv .k { color:#888; }
+    .kv .v { color:#1976d2; font-weight:600; }
+    .hint { font-size:12px; color:#888; margin-top:6px; padding:8px 10px; background:#f5f5f5; border-radius:4px; border-left:3px solid #1976d2; }
+    .cf { font-size:12px; color:#ff6f00; margin-top:8px; padding:8px 10px; background:#fff8e1; border-radius:4px; border-left:3px solid #ff9800; }
+    .loading { color:#999; font-size:13px; padding:14px; text-align:center; }
+    .err { color:#f44336; font-size:13px; padding:10px; background:#ffebee; border-radius:4px; margin-top:8px; }
+    .ws-log { max-height:220px; overflow-y:auto; background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:6px; font-size:12px; font-family:Consolas,Monaco,monospace; }
+    .ws-log .line { margin-bottom:2px; }
+    .ws-log .ts { color:#888; }
+    .ws-log .type-queue_update { color:#4caf50; }
+    .ws-log .type-vehicle_update { color:#64b5f6; }
+    .ws-log .type-kalman_fusion { color:#ff9800; }
+    .ws-log .type-multi_vehicle_assign { color:#ce93d8; }
+    .ws-log .type-surge_alert { color:#ef5350; }
+    .progress-bar { width:100%; height:6px; background:#eee; border-radius:3px; overflow:hidden; margin-top:4px; }
+    .progress-fill { height:100%; background:#1976d2; transition:width 0.3s; }
+    .p50 { color:#1976d2; font-weight:600; }
+    .p90 { color:#f44336; font-weight:600; }
+    .cusum-cell { padding:8px; border-radius:4px; text-align:center; font-size:13px; }
+    .cusum-ok { background:#e8f5e9; color:#2e7d32; }
+    .cusum-warn { background:#fff8e1; color:#ff8f00; }
+    .cusum-hot { background:#ffebee; color:#c62828; }
+    .alloc-item { padding:8px 10px; border-radius:6px; margin-bottom:6px; background:#f5f5f5; font-size:13px; border-left:3px solid #4caf50; }
+    .alloc-item .plate { font-weight:600; color:#1976d2; }
+    .escalation { padding:8px 10px; background:#ffebee; border-left:3px solid #f44336; border-radius:4px; font-size:13px; margin-top:6px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>校园摆渡车·仿真台与消融实验</h1>
+    <div class="meta">
+      <span><span :class="['dot', wsConnected?'dot-on':'dot-off']"></span>WebSocket {{wsConnected?'已连接':'未连接'}}</span>
+      <span>后端: {{apiBase}}</span>
+      <span>AI: {{aiBase}}</span>
+      <span>{{nowTime}}</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- 1. 消融实验对比面板 -->
+    <div class="card">
+      <h3>消融实验·四策略对比 <span class="tag">GET /ablation</span></h3>
+      <div class="row">
+        <label>站点</label>
+        <select v-model="abl.stationId">
+          <option v-for="s in stations" :key="s.id" :value="s.id">{{s.id}} - {{s.name}}</option>
+        </select>
+        <label>线路</label>
+        <select v-model="abl.lineId">
+          <option v-for="l in lines" :key="l.id" :value="l.id">{{l.id}} - {{l.name}}</option>
+        </select>
+        <label>方向</label>
+        <select v-model="abl.direction">
+          <option value="go">去程</option>
+          <option value="back">返程</option>
+        </select>
+        <label>模拟候车</label>
+        <input type="number" v-model.number="abl.waiting" min="0" max="200" />
+        <button class="btn btn-primary" @click="runAblation" :disabled="abl.loading">{{abl.loading?'运行中...':'运行消融实验'}}</button>
+        <button class="btn" style="background:#e0e0e0;" @click="abl.result=null">清空</button>
+      </div>
+      <div v-if="abl.error" class="err">{{abl.error}}</div>
+      <div v-if="abl.result">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:80px;">策略</th>
+              <th>策略名</th>
+              <th>总可用座位</th>
+              <th>可分配座位</th>
+              <th>剩余候车</th>
+              <th>分配详情</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(s,i) in abl.result.strategies" :key="i" :class="'strat-row-'+i">
+              <td><span :class="['badge','strat-'+i]">S{{i}}</span></td>
+              <td>{{s.name}}</td>
+              <td>{{s.totalAvailableSeats}}</td>
+              <td>{{s.assignableSeats}}</td>
+              <td><span :style="{color:s.leftover>0?'#f44336':'#4caf50',fontWeight:600}">{{s.leftover}}</span></td>
+              <td style="font-size:12px;color:#555;">{{s.detail}}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="hint" v-if="abl.result.conclusion">{{abl.result.conclusion}}</div>
+      </div>
+      <div v-else-if="abl.loading" class="loading">正在调用AI服务进行四策略消融对比...</div>
+    </div>
+
+    <div class="grid2">
+      <!-- 2. CUSUM状态面板 -->
+      <div class="card">
+        <h3>CUSUM 状态监控 <span class="tag">GET /cusum/status</span></h3>
+        <div class="row">
+          <button class="btn btn-success" @click="loadCusum" :disabled="cusum.loading">{{cusum.loading?'加载中...':'刷新CUSUM'}}</button>
+          <span style="font-size:12px;color:#888;">μ0 基线 + St 累积偏差</span>
+        </div>
+        <div v-if="cusum.error" class="err">{{cusum.error}}</div>
+        <div v-if="cusum.data">
+          <div class="kv" style="margin-bottom:10px;">
+            <span><span class="k">全局μ0:</span><span class="v">{{cusum.data.mu0}}</span></span>
+            <span><span class="k">阈值h:</span><span class="v">{{cusum.data.threshold}}</span></span>
+            <span><span class="k">检测站点数:</span><span class="v">{{cusum.data.stations?cusum.data.stations.length:0}}</span></span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>站点ID</th><th>站点名</th><th>μ0</th><th>St 值</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="st in (cusum.data.stations||[])" :key="st.stationId">
+                <td>{{st.stationId}}</td>
+                <td>{{st.stationName||'-'}}</td>
+                <td>{{st.mu0}}</td>
+                <td><b>{{st.st}}</b></td>
+                <td>
+                  <span :class="['cusum-cell', st.st>cusum.data.threshold?'cusum-hot':(st.st>cusum.data.threshold*0.6?'cusum-warn':'cusum-ok')]" style="display:inline-block;">
+                    {{st.st>cusum.data.threshold?'突变':(st.st>cusum.data.threshold*0.6?'预警':'正常')}}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else-if="cusum.loading" class="loading">加载CUSUM状态...</div>
+      </div>
+
+      <!-- 3. 课表先验预测面板 -->
+      <div class="card">
+        <h3>课表先验预测 <span class="tag">GET /course-predict</span></h3>
+        <div class="row">
+          <button class="btn btn-success" @click="loadCourse" :disabled="course.loading">{{course.loading?'加载中...':'刷新预测'}}</button>
+          <span style="font-size:12px;color:#888;">即将下课的潜在需求 P50/P90</span>
+        </div>
+        <div v-if="course.error" class="err">{{course.error}}</div>
+        <div v-if="course.data">
+          <div class="kv" style="margin-bottom:10px;">
+            <span><span class="k">当前时段:</span><span class="v">{{course.data.currentTime||'-'}}</span></span>
+            <span><span class="k">预测窗口:</span><span class="v">{{course.data.window||'-'}} 分钟</span></span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>站点</th><th>课程结束</th><th>预计人流</th><th>P50</th><th>P90</th><th>压力</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(p,i) in (course.data.predictions||[])" :key="i">
+                <td>{{p.stationName||('站点'+p.stationId)}}</td>
+                <td>{{p.endTime||'-'}}</td>
+                <td>{{p.expectedFlow}}</td>
+                <td class="p50">{{p.p50}}</td>
+                <td class="p90">{{p.p90}}</td>
+                <td>
+                  <div style="font-size:11px;color:#888;margin-bottom:2px;">{{p.p90}}</div>
+                  <div class="progress-bar"><div class="progress-fill" :style="{width: Math.min(100,p.p90*2)+'%', background: p.p90>40?'#f44336':(p.p90>20?'#ff9800':'#4caf50')}"></div></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else-if="course.loading" class="loading">加载课表预测...</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <!-- 4. 多车分配演示 -->
+      <div class="card">
+        <h3>多车协同分配演示 <span class="tag">GET /api/admin/assign</span></h3>
+        <div class="row">
+          <label>站点</label>
+          <select v-model="assign.stationId">
+            <option v-for="s in stations" :key="s.id" :value="s.id">{{s.id}} - {{s.name}}</option>
+          </select>
+          <label>线路</label>
+          <select v-model="assign.lineId">
+            <option v-for="l in lines" :key="l.id" :value="l.id">{{l.id}} - {{l.name}}</option>
+          </select>
+          <label>方向</label>
+          <select v-model="assign.direction">
+            <option value="go">去程</option>
+            <option value="back">返程</option>
+          </select>
+          <button class="btn btn-primary" @click="runAssign" :disabled="assign.loading">{{assign.loading?'分配中...':'执行分配'}}</button>
+        </div>
+        <div v-if="assign.error" class="err">{{assign.error}}</div>
+        <div v-if="assign.data">
+          <div class="kv">
+            <span><span class="k">候车人数:</span><span class="v">{{assign.data.waitingCount}}</span></span>
+            <span><span class="k">策略:</span><span class="v">{{assign.data.strategy}}</span></span>
+            <span><span class="k">总可用座:</span><span class="v">{{assign.data.totalAvailableSeats}}</span></span>
+            <span><span class="k">总可分配:</span><span class="v">{{assign.data.totalAssignableSeats}}</span></span>
+            <span><span class="k">剩余:</span><span class="v" :style="{color:assign.data.leftover>0?'#f44336':'#1976d2'}">{{assign.data.leftover}}</span></span>
+          </div>
+          <div style="margin-top:8px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#555;">车辆分配明细：</div>
+            <div v-for="a in (assign.data.allocation||[])" :key="a.vehicleId" class="alloc-item">
+              <span class="plate">{{a.plateNo}}</span> 上 <b>{{a.boardCount}}</b> 人，给下游预留 <b>{{a.reserveForDownstream}}</b> 座
+              <span style="color:#888;margin-left:8px;">[{{a.reasonCode}} 置信{{a.confidence}}]</span>
+              <div style="font-size:12px;color:#666;margin-top:2px;">{{a.suggestion}}</div>
+            </div>
+            <div v-if="!assign.data.allocation||assign.data.allocation.length===0" class="loading">无分配记录</div>
+          </div>
+          <div v-if="assign.data.escalation" class="escalation">⚠ {{assign.data.escalation}}</div>
+          <div v-if="assign.data.counterfactual" class="cf">反事实：{{assign.data.counterfactual}}</div>
+        </div>
+        <div v-else-if="assign.loading" class="loading">调用后端多车分配服务...</div>
+      </div>
+
+      <!-- 5. 卡尔曼融合演示 -->
+      <div class="card">
+        <h3>卡尔曼融合演示 <span class="tag">POST /kalman</span></h3>
+        <div class="row">
+          <label>站点</label>
+          <select v-model="kalman.stationId">
+            <option v-for="s in stations" :key="s.id" :value="s.id">{{s.id}} - {{s.name}}</option>
+          </select>
+          <label>线路</label>
+          <select v-model="kalman.lineId">
+            <option v-for="l in lines" :key="l.id" :value="l.id">{{l.id}} - {{l.name}}</option>
+          </select>
+          <label>方向</label>
+          <select v-model="kalman.direction">
+            <option value="go">去程</option>
+            <option value="back">返程</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>观测人数</label>
+          <input type="number" v-model.number="kalman.observedCount" min="0" max="200" />
+          <label>观测方差R</label>
+          <input type="number" v-model.number="kalman.variance" step="0.5" min="0.1" />
+          <label>来源</label>
+          <select v-model="kalman.source">
+            <option value="camera">camera 视觉</option>
+            <option value="sensor">sensor 闸机</option>
+            <option value="manual">manual 人工</option>
+            <option value="wifi">wifi 探针</option>
+          </select>
+          <button class="btn btn-primary" @click="runKalman" :disabled="kalman.loading">{{kalman.loading?'融合中...':'执行融合'}}</button>
+        </div>
+        <div v-if="kalman.error" class="err">{{kalman.error}}</div>
+        <div v-if="kalman.data">
+          <div class="kv">
+            <span><span class="k">观测值:</span><span class="v">{{kalman.data.observedCount}}</span></span>
+            <span><span class="k">先验估计:</span><span class="v">{{kalman.data.previousEstimate}}</span></span>
+            <span><span class="k">融合结果:</span><span class="v" style="color:#4caf50;font-size:15px;">{{kalman.data.fusedCount}}</span></span>
+          </div>
+          <div class="kv">
+            <span><span class="k">卡尔曼增益K:</span><span class="v">{{kalman.data.kalmanGain}}</span></span>
+            <span><span class="k">置信度:</span><span class="v">{{kalman.data.confidence}}</span></span>
+            <span><span class="k">方差P:</span><span class="v">{{kalman.data.varianceP}}</span></span>
+            <span><span class="k">来源:</span><span class="v">{{kalman.data.source}}</span></span>
+          </div>
+          <div class="cf" v-if="kalman.data.counterfactual">反事实：{{kalman.data.counterfactual}}</div>
+          <div class="hint">
+            K越接近1表示观测权重越高（先验不确定时信任观测）；P越小表示融合后估计越精确。
+          </div>
+        </div>
+        <div v-else-if="kalman.loading" class="loading">调用AI服务执行卡尔曼融合...</div>
+      </div>
+    </div>
+
+    <!-- 6. WebSocket实时更新 -->
+    <div class="card">
+      <h3>WebSocket 实时事件流 <span class="tag">{{wsBase}}</span></h3>
+      <div class="row">
+        <button class="btn btn-success" @click="connectWs" v-if="!wsConnected">连接WebSocket</button>
+        <button class="btn btn-danger" @click="disconnectWs" v-else>断开连接</button>
+        <button class="btn" style="background:#e0e0e0;" @click="wsLogs=[]">清空日志</button>
+        <span style="font-size:12px;color:#888;">已接收 {{wsLogs.length}} 条事件</span>
+      </div>
+      <div class="ws-log" ref="wsLogBox">
+        <div v-if="wsLogs.length===0" style="color:#666;">等待事件...</div>
+        <div v-for="(log,i) in wsLogs" :key="i" class="line">
+          <span class="ts">[{{log.time}}]</span>
+          <span :class="'type-'+log.type">[{{log.type}}]</span>
+          {{log.summary}}
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. 数字孪生回放 -->
+    <div class="card">
+      <h3>数字孪生回放 <span class="tag">事件录制与回放</span></h3>
+      <div class="row">
+        <button class="btn btn-success" @click="startRecording" v-if="!replay.recording">● 开始录制</button>
+        <button class="btn btn-danger" @click="stopRecording" v-else>■ 停止录制 ({{replay.events.length}}条)</button>
+        <button class="btn btn-primary" @click="startReplay" :disabled="replay.events.length===0||replay.playing">▶ 回放</button>
+        <button class="btn btn-warning" @click="pauseReplay" v-if="replay.playing">⏸ 暂停</button>
+        <button class="btn" style="background:#e0e0e0;" @click="stepReplay" :disabled="replay.playing||replay.cursor>=replay.events.length">⏭ 单步</button>
+        <button class="btn" style="background:#e0e0e0;" @click="resetReplay" :disabled="replay.playing">↺ 重置</button>
+        <label>速度</label>
+        <select v-model.number="replay.speed">
+          <option :value="0.5">0.5x</option>
+          <option :value="1">1x</option>
+          <option :value="2">2x</option>
+          <option :value="5">5x</option>
+          <option :value="10">10x</option>
+        </select>
+        <button class="btn" style="background:#e0e0e0;" @click="exportReplay" :disabled="replay.events.length===0">导出JSON</button>
+      </div>
+      <div class="row" v-if="replay.events.length>0">
+        <span style="font-size:12px;color:#888;">进度: {{replay.cursor}}/{{replay.events.length}}</span>
+        <div class="progress-bar" style="flex:1;">
+          <div class="progress-fill" :style="{width: (replay.cursor/replay.events.length*100)+'%'}"></div>
+        </div>
+      </div>
+      <div v-if="replay.currentEvent" style="margin-top:10px;">
+        <div class="kv">
+          <span><span class="k">时间:</span><span class="v">{{replay.currentEvent.time}}</span></span>
+          <span><span class="k">类型:</span><span class="v">{{replay.currentEvent.type}}</span></span>
+        </div>
+        <div style="font-size:12px;color:#555;padding:8px;background:#f5f5f5;border-radius:4px;margin-top:4px;">
+          {{replay.currentEvent.summary}}
+        </div>
+      </div>
+      <div v-if="replay.events.length===0" class="hint">
+        点击"开始录制"捕获WebSocket事件，停止后可回放、单步、调速，支持导出为JSON用于离线分析。
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const { createApp, ref, reactive, onMounted, onBeforeUnmount, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const _BASE = window.BACKEND_URL || window.location.origin;
+    const apiBase = _BASE + '/api';
+    const aiBase = window.AI_SERVICE_URL || ('http://' + window.location.hostname + ':8000');
+    const wsBase = (_BASE.startsWith('https') ? 'wss://' : 'ws://') + _BASE.replace(/^https?:\/\//, '') + '/ws';
+
+    const stations = ref([]);
+    const lines = ref([]);
+    const nowTime = ref('');
+    const wsConnected = ref(false);
+    const wsLogs = ref([]);
+    const wsLogBox = ref(null);
+    let ws = null;
+    let timer = null;
+
+    const abl = reactive({
+      stationId: 1, lineId: 1, direction: 'go', waiting: 30,
+      loading: false, result: null, error: ''
+    });
+
+    const cusum = reactive({ loading: false, data: null, error: '' });
+
+    const course = reactive({ loading: false, data: null, error: '' });
+
+    const assign = reactive({
+      stationId: 1, lineId: 1, direction: 'go',
+      loading: false, data: null, error: ''
+    });
+
+    const kalman = reactive({
+      stationId: 1, lineId: 1, direction: 'go',
+      observedCount: 25, variance: 4.0, source: 'camera',
+      loading: false, data: null, error: ''
+    });
+
+    const replay = reactive({
+      recording: false, playing: false,
+      events: [], cursor: 0, speed: 1,
+      currentEvent: null
+    });
+    let replayTimer = null;
+
+    function fmtTime(ts) {
+      const d = ts ? new Date(ts) : new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    }
+
+    function tick() { nowTime.value = fmtTime(); }
+
+    async function loadMeta() {
+      try {
+        const res = await fetch(apiBase + '/admin/dashboard');
+        const json = await res.json();
+        if (json && json.data) {
+          stations.value = json.data.stations || [];
+          lines.value = json.data.lines || [];
+        }
+      } catch (e) {
+        stations.value = [{id:1,name:'北门'},{id:2,name:'图书馆'},{id:3,name:'教学楼A'},{id:4,name:'食堂'},{id:5,name:'南门'}];
+        lines.value = [{id:1,name:'环线1'},{id:2,name:'环线2'}];
+      }
+    }
+
+    async function runAblation() {
+      abl.loading = true; abl.error = ''; abl.result = null;
+      try {
+        const url = aiBase + '/ablation?station_id=' + abl.stationId +
+                    '&line_id=' + abl.lineId +
+                    '&direction=' + abl.direction +
+                    '&waiting=' + abl.waiting;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('AI服务返回 ' + res.status);
+        const json = await res.json();
+        abl.result = json.data || json;
+      } catch (e) {
+        abl.error = '消融实验调用失败：' + e.message + '（请确认AI服务 ' + aiBase + ' 已启动）';
+      } finally { abl.loading = false; }
+    }
+
+    async function loadCusum() {
+      cusum.loading = true; cusum.error = ''; cusum.data = null;
+      try {
+        const res = await fetch(aiBase + '/cusum/status');
+        if (!res.ok) throw new Error('AI服务返回 ' + res.status);
+        const json = await res.json();
+        cusum.data = json.data || json;
+      } catch (e) {
+        cusum.error = 'CUSUM加载失败：' + e.message;
+      } finally { cusum.loading = false; }
+    }
+
+    async function loadCourse() {
+      course.loading = true; course.error = ''; course.data = null;
+      try {
+        const res = await fetch(aiBase + '/course-predict');
+        if (!res.ok) throw new Error('AI服务返回 ' + res.status);
+        const json = await res.json();
+        course.data = json.data || json;
+      } catch (e) {
+        course.error = '课表预测加载失败：' + e.message;
+      } finally { course.loading = false; }
+    }
+
+    async function runAssign() {
+      assign.loading = true; assign.error = ''; assign.data = null;
+      try {
+        const url = apiBase + '/admin/assign?stationId=' + assign.stationId +
+                    '&lineId=' + assign.lineId +
+                    '&direction=' + assign.direction;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('后端返回 ' + res.status);
+        const json = await res.json();
+        assign.data = json.data || json;
+      } catch (e) {
+        assign.error = '多车分配调用失败：' + e.message;
+      } finally { assign.loading = false; }
+    }
+
+    async function runKalman() {
+      kalman.loading = true; kalman.error = ''; kalman.data = null;
+      try {
+        const res = await fetch(aiBase + '/kalman', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            station_id: kalman.stationId,
+            line_id: kalman.lineId,
+            direction: kalman.direction,
+            observed_count: kalman.observedCount,
+            variance: kalman.variance,
+            source: kalman.source
+          })
+        });
+        if (!res.ok) throw new Error('AI服务返回 ' + res.status);
+        const json = await res.json();
+        kalman.data = json.data || json;
+      } catch (e) {
+        kalman.error = '卡尔曼融合失败：' + e.message;
+      } finally { kalman.loading = false; }
+    }
+
+    function pushLog(type, data) {
+      let summary = '';
+      try {
+        if (type === 'queue_update') summary = '站点' + (data.stationId||'?') + ' 候车=' + (data.waitingCount||0) + ' 置信=' + (data.confidence||'-');
+        else if (type === 'vehicle_update') summary = '车辆' + (data.plateNo||data.id) + ' 载荷=' + (data.currentLoad||0) + '/' + (data.capacity||0) + ' 状态=' + (data.status||'-');
+        else if (type === 'kalman_fusion') summary = '站点' + (data.stationId||'?') + ' 融合=' + (data.fusedCount||0) + ' K=' + (data.kalmanGain||'-');
+        else if (type === 'multi_vehicle_assign') summary = '站点' + (data.stationId||'?') + ' 策略=' + (data.strategy||'-') + ' 剩余=' + (data.leftover||0);
+        else if (type === 'surge_alert') summary = JSON.stringify(data).slice(0, 80);
+        else summary = JSON.stringify(data).slice(0, 80);
+      } catch (_) { summary = '{}'; }
+      wsLogs.value.push({ time: fmtTime(), type, summary });
+      if (wsLogs.value.length > 200) wsLogs.value.splice(0, wsLogs.value.length - 200);
+      if (replay.recording) {
+        replay.events.push({ time: fmtTime(), ts: Date.now(), type, summary });
+      }
+      nextTick(() => {
+        if (wsLogBox.value) wsLogBox.value.scrollTop = wsLogBox.value.scrollHeight;
+      });
+    }
+
+    function connectWs() {
+      if (ws) { try { ws.close(); } catch (_) {} }
+      try {
+        ws = new WebSocket(wsBase);
+        ws.onopen = () => { wsConnected.value = true; pushLog('system', {msg:'WebSocket已连接'}); };
+        ws.onclose = () => { wsConnected.value = false; };
+        ws.onerror = () => { wsConnected.value = false; };
+        ws.onmessage = (ev) => {
+          try {
+            const msg = JSON.parse(ev.data);
+            pushLog(msg.type || 'unknown', msg.data || {});
+          } catch (_) {}
+        };
+      } catch (e) {
+        wsConnected.value = false;
+      }
+    }
+
+    function disconnectWs() {
+      if (ws) { try { ws.close(); } catch (_) {} ws = null; }
+      wsConnected.value = false;
+    }
+
+    function startRecording() { replay.recording = true; replay.events = []; }
+    function stopRecording() { replay.recording = false; }
+    function startReplay() {
+      if (replay.events.length === 0) return;
+      replay.playing = true;
+      replay.cursor = 0;
+      replay.currentEvent = null;
+      replayStep();
+    }
+    function replayStep() {
+      if (!replay.playing || replay.cursor >= replay.events.length) {
+        replay.playing = false;
+        return;
+      }
+      replay.currentEvent = replay.events[replay.cursor];
+      replay.cursor++;
+      const delay = 1000 / replay.speed;
+      replayTimer = setTimeout(replayStep, delay);
+    }
+    function pauseReplay() {
+      replay.playing = false;
+      if (replayTimer) { clearTimeout(replayTimer); replayTimer = null; }
+    }
+    function stepReplay() {
+      if (replay.cursor >= replay.events.length) return;
+      replay.currentEvent = replay.events[replay.cursor];
+      replay.cursor++;
+    }
+    function resetReplay() {
+      pauseReplay();
+      replay.cursor = 0;
+      replay.currentEvent = null;
+    }
+    function exportReplay() {
+      const blob = new Blob([JSON.stringify(replay.events, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'replay_' + fmtTime().replace(/:/g, '') + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    onMounted(() => {
+      tick();
+      timer = setInterval(tick, 1000);
+      loadMeta();
+      connectWs();
+    });
+
+    onBeforeUnmount(() => {
+      if (timer) clearInterval(timer);
+      if (replayTimer) clearTimeout(replayTimer);
+      disconnectWs();
+    });
+
+    return {
+      apiBase, aiBase, stations, lines, nowTime,
+      wsConnected, wsLogs, wsLogBox,
+      abl, cusum, course, assign, kalman, replay,
+      runAblation, loadCusum, loadCourse, runAssign, runKalman,
+      connectWs, disconnectWs,
+      startRecording, stopRecording, startReplay, pauseReplay, stepReplay, resetReplay, exportReplay
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+"""
+校园摆渡车 AI 智能调度服务 (Python + FastAPI)
+独立部署，通过 HTTP 与 Java 后端通信
+启动: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+"""
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+import requests, numpy as np, time, logging
+from predict import DemandPredictor
+from cusum import CusumDetector
+from assign import MultiVehicleAllocator
+from kalman import KalmanFusion
+from eta import EtaPredictor
+
+logging.basicConfig(level=logging.INFO)
+app = FastAPI(title="校园摆渡车AI服务", version="1.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+BACKEND = "http://localhost:8080/api"
+predictor = DemandPredictor()
+detector = CusumDetector()
+allocator = MultiVehicleAllocator()
+kalman = KalmanFusion()
+eta_calc = EtaPredictor()
+
+class Observation(BaseModel):
+    station_id: int
+    line_id: int
+    direction: str = "go"
+    observed_count: int
+    variance: float = 4.0
+    source: str = "camera"
+
+class AssignRequest(BaseModel):
+    station_id: int
+    line_id: int
+    direction: str = "go"
+    waiting: int = 0
+
+class CusumInput(BaseModel):
+    station_id: int
+    line_id: int
+    direction: str = "go"
+    arrival_rate: float
+
+class PredictRequest(BaseModel):
+    station_id: int
+    line_id: int
+    direction: str = "go"
+    history: List[int] = []
+
+@app.get("/")
+def root():
+    return {"service": "campus-shuttle-ai", "status": "running", "version": "1.0.0"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "backend": BACKEND}
+
+@app.post("/predict")
+def predict(req: PredictRequest):
+    result = predictor.predict(req.station_id, req.line_id, req.direction, req.history)
+    return {"code": 200, "data": result}
+
+@app.post("/cusum")
+def cusum(req: CusumInput):
+    result = detector.detect(req.station_id, req.line_id, req.direction, req.arrival_rate)
+    return {"code": 200, "data": result}
+
+@app.get("/cusum/status")
+def cusum_status():
+    return {"code": 200, "data": detector.get_status()}
+
+@app.post("/assign")
+def assign(req: AssignRequest):
+    vehicles = []
+    try:
+        r = requests.get(f"{BACKEND}/admin/station-vehicles?stationId={req.station_id}", timeout=3)
+        if r.status_code == 200:
+            vehicles = r.json().get("data", [])
+    except: pass
+    result = allocator.assign(vehicles, req.waiting, req.station_id, req.line_id, req.direction)
+    return {"code": 200, "data": result}
+
+@app.post("/kalman")
+def kalman_fuse(obs: Observation):
+    result = kalman.fuse(obs.station_id, obs.line_id, obs.direction, obs.observed_count, obs.variance, obs.source)
+    return {"code": 200, "data": result}
+
+@app.get("/eta")
+def eta(line_id: int, station_id: int, direction: str = "go"):
+    try:
+        r = requests.get(f"{BACKEND}/passenger/eta?lineId={line_id}&stationId={station_id}&direction={direction}", timeout=3)
+        if r.status_code == 200:
+            return r.json()
+    except: pass
+    return {"code": 200, "data": []}
+
+@app.get("/course-predict")
+def course_predict():
+    """课表先验: 潜在需求 = 人数 × 转化率"""
+    try:
+        r = requests.get(f"{BACKEND}/admin/dashboard", timeout=3)
+        if r.status_code == 200:
+            data = r.json().get("data", {})
+            dispatch = data.get("dispatch", {})
+            courses = dispatch.get("upcomingCourses", [])
+            results = []
+            for c in courses:
+                potential = int(c.get("studentCount", 0) * float(c.get("conversionRate", 0.3)))
+                results.append({
+                    "building": c.get("building"),
+                    "endTime": c.get("endTime"),
+                    "studentCount": c.get("studentCount"),
+                    "conversionRate": c.get("conversionRate"),
+                    "potentialDemand": potential,
+                    "p50": int(potential * 0.8),
+                    "p90": int(potential * 1.2),
+                    "action": "preposition" if potential >= 8 else "monitor",
+                    "reasonCode": "COURSE_PRIOR",
+                    "confidence": 0.75
+                })
+            return {"code": 200, "data": results}
+    except Exception as e:
+        return {"code": 500, "msg": str(e)}
+    return {"code": 200, "data": []}
+
+@app.get("/ablation")
+def ablation(station_id: int, line_id: int, direction: str = "go", waiting: int = 20):
+    """消融实验: 对比4种策略"""
+    try:
+        r = requests.get(f"{BACKEND}/admin/station-vehicles?stationId={station_id}", timeout=3)
+        vehicles = r.json().get("data", []) if r.status_code == 200 else []
+    except:
+        vehicles = []
+    results = {}
+    for strategy in ["original", "fcfs", "seat_release", "seat_release_reserve"]:
+        results[strategy] = allocator.assign(vehicles, waiting, station_id, line_id, direction, strategy)
+    return {"code": 200, "data": results}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

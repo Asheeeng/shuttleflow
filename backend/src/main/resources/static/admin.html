@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校园摆渡车·管理端</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f0f2f5; }
+    .header { background:#1976d2; color:#fff; padding:12px 24px; display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { font-size:20px; }
+    .header .user { font-size:14px; }
+    .login-wrap { display:flex; justify-content:center; padding:80px; }
+    .login-box { background:#fff; padding:32px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); width:360px; }
+    .login-box input { width:100%; height:44px; border:1px solid #ddd; border-radius:8px; padding:0 12px; font-size:16px; margin-bottom:12px; }
+    .btn { border:none; border-radius:6px; cursor:pointer; font-size:14px; padding:8px 16px; }
+    .btn-primary { background:#1976d2; color:#fff; }
+    .btn-success { background:#4caf50; color:#fff; }
+    .btn-warning { background:#ff9800; color:#fff; }
+    .btn-danger { background:#f44336; color:#fff; }
+    .btn-sm { font-size:12px; padding:4px 10px; }
+    .main { padding:16px; }
+    .tabs { display:flex; gap:4px; margin-bottom:16px; }
+    .tab { padding:8px 20px; border-radius:6px 6px 0 0; cursor:pointer; font-size:14px; background:#e0e0e0; }
+    .tab-active { background:#1976d2; color:#fff; }
+    .grid { display:grid; gap:16px; }
+    .card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .card h3 { font-size:16px; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:8px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { background:#fafafa; padding:8px; text-align:left; font-weight:600; border-bottom:2px solid #eee; }
+    td { padding:8px; border-bottom:1px solid #f0f0f0; }
+    tr:hover { background:#f5f5f5; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; color:#fff; }
+    .badge-green { background:#4caf50; }
+    .badge-yellow { background:#ff9800; }
+    .badge-red { background:#f44336; }
+    .badge-blue { background:#1976d2; }
+    .badge-gray { background:#9e9e9e; }
+    .badge-orange { background:#ff5722; }
+    .toggle { width:40px; height:20px; border-radius:10px; display:inline-block; cursor:pointer; position:relative; }
+    .toggle-on { background:#4caf50; }
+    .toggle-off { background:#ccc; }
+    .toggle::after { content:''; width:16px; height:16px; border-radius:50%; background:#fff; position:absolute; top:2px; transition:0.3s; }
+    .toggle-on::after { left:22px; } .toggle-off::after { left:2px; }
+    .alert-item { padding:8px 12px; border-radius:6px; margin-bottom:6px; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+    .alert-yellow { background:#fffde7; border-left:4px solid #ff9800; }
+    .alert-orange { background:#fff3e0; border-left:4px solid #ff5722; }
+    .alert-red { background:#ffebee; border-left:4px solid #f44336; }
+    .task-item { padding:10px; border-radius:6px; margin-bottom:8px; border:1px solid #eee; }
+    .task-pending { border-left:4px solid #ff9800; }
+    .task-assigned { border-left:4px solid #1976d2; }
+    .task-executing { border-left:4px solid #4caf50; }
+    .task-escalated { border-left:4px solid #f44336; }
+    select,input { border:1px solid #ddd; border-radius:6px; padding:6px 10px; font-size:14px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>校园摆渡车·智能动态调度管理端</h1>
+    <span class="user" v-if="admin">{{admin.name}} | <a href="#" @click.prevent="admin=null" style="color:#fff;">退出</a></span>
+  </div>
+  <template v-if="!admin">
+    <div class="login-wrap">
+      <div class="login-box">
+        <h2 style="text-align:center;margin-bottom:20px;">管理员登录</h2>
+        <input v-model="loginForm.username" placeholder="用户名" />
+        <input v-model="loginForm.password" type="password" placeholder="密码" />
+        <button class="btn btn-primary" style="width:100%;height:44px;font-size:16px;" @click="doLogin">登录</button>
+        <p style="text-align:center;margin-top:12px;color:#999;font-size:13px;">admin/admin123 或 dispatcher/123456</p>
+      </div>
+    </div>
+  </template>
+  <template v-else>
+    <div class="main">
+      <div class="tabs">
+        <div :class="['tab',tab==='dashboard'?'tab-active':'']" @click="tab='dashboard'">调度大屏</div>
+        <div :class="['tab',tab==='dispatch'?'tab-active':'']" @click="tab='dispatch'">调度台</div>
+        <div :class="['tab',tab==='vehicle'?'tab-active':'']" @click="tab='vehicle'">车辆管理</div>
+        <div :class="['tab',tab==='alert'?'tab-active':'']" @click="tab='alert'">预警中心</div>
+        <div :class="['tab',tab==='event'?'tab-active':'']" @click="tab='event'">事件流水</div>
+      </div>
+
+      <!-- 调度大屏 -->
+      <template v-if="tab==='dashboard'">
+        <div class="grid" style="grid-template-columns:1fr 1fr;">
+          <div class="card">
+            <h3>站点候车队列 TOP10</h3>
+            <table>
+              <tr><th>站点ID</th><th>线路</th><th>方向</th><th>候车人数</th><th>置信度</th></tr>
+              <tr v-for="q in topQueues" :key="q.stationId+'-'+q.lineId+'-'+q.direction">
+                <td>{{stationName(q.stationId)}}</td>
+                <td>{{q.lineId}}号线</td>
+                <td>{{q.direction==='go'?'去向':'回向'}}</td>
+                <td><b :style="{color:q.waitingCount>=15?'#f44336':q.waitingCount>=8?'#ff9800':'#4caf50'}">{{q.waitingCount}}</b></td>
+                <td>{{q.confidence}}</td>
+              </tr>
+            </table>
+          </div>
+          <div class="card">
+            <h3>车辆负载</h3>
+            <table>
+              <tr><th>车牌</th><th>线路</th><th>人数</th><th>负载率</th><th>状态</th><th>当日运行</th></tr>
+              <tr v-for="v in vehicles" :key="v.id">
+                <td>{{v.plateNo}}</td>
+                <td>{{v.lineId}}号线</td>
+                <td>{{v.currentLoad}}/{{v.capacity}}</td>
+                <td><span :class="['badge',loadBadge(v)]">{{Math.round(v.currentLoad*100/v.capacity)}}%</span></td>
+                <td><span :class="['badge',statusBadge(v.status)]">{{v.status}}</span></td>
+                <td><span :class="['toggle',v.runningToday===1?'toggle-on':'toggle-off']" @click="setRunning(v)"></span></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:16px;">
+          <div class="card">
+            <h3>即将下课（课表先验）</h3>
+            <table v-if="dashboard.upcomingCourses && dashboard.upcomingCourses.length">
+              <tr><th>楼栋</th><th>下课时间</th><th>人数</th><th>转化率</th><th>潜在需求</th></tr>
+              <tr v-for="c in dashboard.upcomingCourses" :key="c.id">
+                <td>{{c.building}}</td><td>{{c.endTime}}</td><td>{{c.studentCount}}</td>
+                <td>{{(c.conversionRate*100).toFixed(0)}}%</td>
+                <td><b>{{Math.round(c.studentCount*c.conversionRate)}}</b></td>
+              </tr>
+            </table>
+            <p v-else style="color:#999;text-align:center;padding:20px;">30分钟内无下课</p>
+          </div>
+          <div class="card">
+            <h3>待处理预警</h3>
+            <div v-if="alerts.length">
+              <div v-for="a in alerts" :key="a.id" :class="['alert-item','alert-'+a.level]">
+                <span>[{{a.level}}] {{a.message}}</span>
+                <span>
+                  <button class="btn btn-success btn-sm" @click="confirmAlert(a.id)">确认</button>
+                  <button class="btn btn-warning btn-sm" @click="suppressAlert(a.id)">抑制</button>
+                  <button class="btn btn-gray btn-sm" @click="resolveAlert(a.id)">解除</button>
+                </span>
+              </div>
+            </div>
+            <p v-else style="color:#999;text-align:center;padding:20px;">暂无预警</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- 调度台 -->
+      <template v-if="tab==='dispatch'">
+        <div class="grid" style="grid-template-columns:1fr 1fr;">
+          <div class="card">
+            <h3>手动创建调度任务</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <select v-model="newTask.lineId"><option value="">选择线路</option><option v-for="l in lines" :key="l.id" :value="l.id">{{l.lineNo}}号线</option></select>
+              <select v-model="newTask.stationId"><option value="">选择站点</option><option v-for="s in stations" :key="s.id" :value="s.id">{{s.name}}</option></select>
+              <select v-model="newTask.direction"><option value="go">去向</option><option value="back">回向</option></select>
+              <select v-model="newTask.priority"><option value="5">优先级5(普通)</option><option value="7">优先级7(较高)</option><option value="9">优先级9(紧急)</option></select>
+              <input v-model="newTask.suggestion" placeholder="调度说明" />
+              <button class="btn btn-primary" @click="createTask">创建并自动派单</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>活跃任务</h3>
+            <div v-for="t in tasks" :key="t.id" :class="['task-item','task-'+t.status]">
+              <div style="display:flex;justify-content:space-between;">
+                <b>{{t.taskNo}}</b>
+                <span :class="['badge',taskBadge(t.status)]">{{t.status}}</span>
+              </div>
+              <div style="font-size:13px;margin:4px 0;">{{t.suggestion}}</div>
+              <div style="font-size:12px;color:#666;display:flex;justify-content:space-between;">
+                <span>线路{{t.lineId}} | 优先级{{t.priority}} | {{t.reasonCode}}</span>
+                <span v-if="t.vehicleId">车辆#{{t.vehicleId}}</span>
+              </div>
+              <div style="margin-top:6px;" v-if="t.status==='pending'||t.status==='assigned'">
+                <button class="btn btn-primary btn-sm" @click="assignTask(t.id)">派单</button>
+                <button class="btn btn-success btn-sm" @click="completeTask(t.id)">完成</button>
+              </div>
+            </div>
+            <p v-if="!tasks.length" style="color:#999;text-align:center;padding:20px;">暂无活跃任务</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- 车辆管理 -->
+      <template v-if="tab==='vehicle'">
+        <div class="card">
+          <h3>车辆管理（车牌号区分 · 当日运行清单）</h3>
+          <table>
+            <tr><th>车牌</th><th>线路</th><th>容量</th><th>当前人数</th><th>状态</th><th>当日运行</th><th>当前站点</th><th>操作</th></tr>
+            <tr v-for="v in vehicles" :key="v.id">
+              <td><b>{{v.plateNo}}</b></td>
+              <td>{{v.lineId}}号线</td>
+              <td>{{v.capacity}}</td>
+              <td>{{v.currentLoad}}</td>
+              <td><span :class="['badge',statusBadge(v.status)]">{{v.status}}</span></td>
+              <td><span :class="['toggle',v.runningToday===1?'toggle-on':'toggle-off']" @click="setRunning(v)"></span></td>
+              <td>{{v.currentStationId||'-'}}</td>
+              <td>
+                <select @change="setStatus(v,$event.target.value)" style="font-size:12px;">
+                  <option value="">改状态</option>
+                  <option value="offline">offline</option><option value="standby">standby</option>
+                  <option value="running">running</option><option value="task">task</option>
+                </select>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </template>
+
+      <!-- 预警中心 -->
+      <template v-if="tab==='alert'">
+        <div class="card">
+          <h3>预警列表</h3>
+          <table>
+            <tr><th>级别</th><th>类型</th><th>消息</th><th>时间</th><th>状态</th><th>操作</th></tr>
+            <tr v-for="a in allAlerts" :key="a.id">
+              <td><span :class="['badge','badge-'+a.level]">{{a.level}}</span></td>
+              <td>{{a.type}}</td><td>{{a.message}}</td><td>{{a.createdAt}}</td>
+              <td><span :class="['badge',a.status==='pending'?'badge-orange':'badge-gray']">{{a.status}}</span></td>
+              <td>
+                <button class="btn btn-success btn-sm" @click="confirmAlert(a.id)">确认</button>
+                <button class="btn btn-gray btn-sm" @click="resolveAlert(a.id)">解除</button>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </template>
+
+      <!-- 事件流水 -->
+      <template v-if="tab==='event'">
+        <div class="card">
+          <h3>事件流水（原子事件 · 幂等 · 可审计）</h3>
+          <table>
+            <tr><th>事件号</th><th>类型</th><th>来源</th><th>车辆</th><th>站点</th><th>人数变化</th><th>事件时间</th></tr>
+            <tr v-for="e in events" :key="e.id">
+              <td style="font-size:11px;">{{e.eventNo}}</td>
+              <td><span :class="['badge','badge-blue']">{{e.type}}</span></td>
+              <td>{{e.source}}</td>
+              <td>{{e.vehicleId||'-'}}</td>
+              <td>{{e.stationId||'-'}}</td>
+              <td>{{e.count||0}}</td>
+              <td>{{e.eventTime}}</td>
+            </tr>
+          </table>
+        </div>
+      </template>
+    </div>
+  </template>
+</div>
+<script src="config.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const {createApp,ref,reactive,onMounted,onUnmounted} = Vue;
+createApp({
+  setup(){
+    const _BASE=window.BACKEND_URL||window.location.origin;
+    const API=_BASE+'/api';
+    const admin=ref(null);
+    const loginForm=reactive({username:'admin',password:'admin123'});
+    const tab=ref('dashboard');
+    const vehicles=ref([]), stations=ref([]), lines=ref([]), alerts=ref([]), allAlerts=ref([]);
+    const tasks=ref([]), events=ref([]), queues=ref([]);
+    const dashboard=ref({}), newTask=reactive({lineId:'',stationId:'',direction:'go',priority:'5',suggestion:''});
+    let ws=null, timer=null;
+
+    async function post(url,data){const r=await fetch(API+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return r.json();}
+    async function get(url){const r=await fetch(API+url);return r.json();}
+
+    async function doLogin(){
+      const res=await post('/admin/login',loginForm);
+      if(res.code===200){admin.value=res.data;await loadAll();connectWS();timer=setInterval(loadAll,5000);}
+      else alert(res.msg);
+    }
+
+    async function loadAll(){
+      const [v,s,l,a,t,e,d,q]=await Promise.all([
+        get('/admin/vehicles'),get('/stations'),get('/lines'),
+        get('/admin/alerts'),get('/admin/tasks'),get('/admin/events?limit=50'),
+        get('/admin/dashboard'),get('/admin/queues')
+      ]);
+      if(v.code===200)vehicles.value=v.data;
+      if(s.code===200)stations.value=s.data;
+      if(l.code===200)lines.value=l.data;
+      if(a.code===200)alerts.value=a.data;
+      if(t.code===200)tasks.value=t.data;
+      if(e.code===200)events.value=e.data;
+      if(d.code===200)dashboard.value=d.data;
+      if(q.code===200)queues.value=q.data;
+      const ar=await get('/admin/alerts?status=all');if(ar.code===200)allAlerts.value=ar.data;
+    }
+
+    function connectWS(){
+      ws=new WebSocket((_BASE.startsWith('https')?'wss://':'ws://')+_BASE.replace(/^https?:\/\//,'')+'/ws');
+      ws.onmessage=(e)=>{loadAll();};
+      ws.onclose=()=>{if(admin.value)setTimeout(connectWS,3000);};
+    }
+
+    const topQueues=()=>{return queues.value.filter(q=>q.waitingCount>0).sort((a,b)=>b.waitingCount-a.waitingCount).slice(0,10);};
+    function stationName(id){const s=stations.value.find(x=>x.id===id);return s?s.shortName:id;}
+    function loadBadge(v){const r=v.currentLoad*100/v.capacity;return r>=90?'badge-red':r>=70?'badge-yellow':'badge-green';}
+    function statusBadge(s){const m={offline:'badge-gray',standby:'badge-blue',running:'badge-green',task:'badge-orange',returning:'badge-yellow'};return m[s]||'badge-gray';}
+    function taskBadge(s){const m={pending:'badge-yellow',assigned:'badge-blue',executing:'badge-green',completed:'badge-gray',escalated:'badge-red',rejected:'badge-gray'};return m[s]||'badge-gray';}
+
+    async function setRunning(v){const res=await post('/admin/vehicle/set-running',{vehicleId:v.id,running:v.runningToday!==1});if(res.code===200)vehicles.value=vehicles.value.map(x=>x.id===v.id?res.data:x);}
+    async function setStatus(v,status){if(!status)return;const res=await post('/admin/vehicle/set-status',{vehicleId:v.id,status});if(res.code===200)vehicles.value=vehicles.value.map(x=>x.id===v.id?res.data:x);}
+    async function confirmAlert(id){await post('/admin/alert/confirm',{id});loadAll();}
+    async function suppressAlert(id){await post('/admin/alert/suppress',{id});loadAll();}
+    async function resolveAlert(id){await post('/admin/alert/resolve',{id});loadAll();}
+    async function assignTask(id){await post('/admin/task/assign',{taskId:id});loadAll();}
+    async function completeTask(id){await post('/admin/task/complete',{taskId:id});loadAll();}
+    async function createTask(){
+      if(!newTask.lineId){alert('请选择线路');return;}
+      const res=await post('/admin/task/create',newTask);
+      if(res.code===200){alert('任务已创建并自动派单');newTask.suggestion='';loadAll();}
+    }
+
+    onUnmounted(()=>{if(ws)ws.close();if(timer)clearInterval(timer);});
+    return {admin,loginForm,tab,vehicles,stations,lines,alerts,allAlerts,tasks,events,queues,dashboard,newTask,
+      doLogin,topQueues,stationName,loadBadge,statusBadge,taskBadge,
+      setRunning,setStatus,confirmAlert,suppressAlert,resolveAlert,assignTask,completeTask,createTask};
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
