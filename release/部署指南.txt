@@ -1,0 +1,94 @@
+# 部署指南
+
+## 方式一：一体化部署（最简单，推荐）
+
+后端和前端在同一个jar包内，部署到一台服务器即可。
+
+### 步骤
+```
+1. 服务器安装 Java 8+ 和 MySQL 8.0
+2. mysql -u root -p"Root@123456" < init.sql
+3. java -jar shuttle-1.0.0.jar
+4. 防火墙开放8080端口
+```
+
+### 访问方式
+- 本机：http://localhost:8080/passenger.html
+- 局域网：http://服务器IP:8080/passenger.html
+- 公网：http://公网IP:8080/passenger.html 或 http://域名:8080/passenger.html
+
+**手机访问**：手机和服务器在同一WiFi下，用手机浏览器打开 http://服务器IP:8080/passenger.html
+
+---
+
+## 方式二：前后端分离部署
+
+前端部署到静态文件服务器（Nginx/Vercel/GitHub Pages），后端部署到应用服务器。
+
+### 步骤
+1. **部署后端**
+   ```
+   java -jar shuttle-1.0.0.jar
+   ```
+   后端运行在 http://后端IP:8080
+
+2. **配置前端**
+   编辑 `frontend/config.js`，设置后端地址：
+   ```javascript
+   window.BACKEND_URL = 'http://后端公网IP:8080';
+   // 或使用域名
+   // window.BACKEND_URL = 'https://api.yourdomain.com';
+   ```
+
+3. **部署前端**
+   将 `frontend/` 目录部署到任意Web服务器：
+   - Nginx：复制到 `/usr/share/nginx/html/`
+   - Vercel：上传 frontend 目录
+   - Python：`python -m http.server 80` 在frontend目录下
+
+### 访问方式
+- 乘客端：http://前端地址/passenger.html
+- 司机端：http://前端地址/driver.html
+- 管理端：http://前端地址/admin.html
+
+---
+
+## 方式三：云服务器部署（公网访问）
+
+### 1. 购买云服务器（如华为云ECS、阿里云ECS）
+### 2. 安装环境
+```
+# 安装Java
+yum install java-1.8.0-openjdk -y   # CentOS
+apt install openjdk-8-jre -y         # Ubuntu
+
+# 安装MySQL
+yum install mysql-server -y          # CentOS
+apt install mysql-server -y          # Ubuntu
+systemctl start mysql
+mysql -u root -p"你的密码" < init.sql
+```
+
+### 3. 修改数据库密码（如不同）
+创建 `application.yml` 放在jar同目录：
+```yaml
+spring:
+  datasource:
+    password: 你的密码
+```
+
+### 4. 启动
+```
+nohup java -jar shuttle-1.0.0.jar &
+```
+
+### 5. 开放安全组端口
+在云控制台安全组规则中开放8080端口（TCP）
+
+### 6. 访问
+```
+乘客端：http://公网IP:8080/passenger.html
+司机端：http://公网IP:8080/driver.html
+管理端：http://公网IP:8080/admin.html
+```
+任何人拿到链接即可在手机/电脑浏览器打开使用。

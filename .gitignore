@@ -1,0 +1,26 @@
+# 构建产物
+backend/target/
+!backend/target/shuttle-1.0.0.jar
+
+# Maven工具
+maven_dir/
+
+# 日志
+*.log
+nul
+
+# IDE
+.codeartsdoer/
+.idea/
+*.iml
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+ai-service/venv/
+ai-service/.venv/
+
+# OS
+Thumbs.db
+.DS_Store

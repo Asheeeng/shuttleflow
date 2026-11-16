@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校园摆渡车·司机端</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f5f5f5; display:flex; justify-content:center; }
+    #app { width:375px; min-height:100vh; background:#f5f5f5; display:flex; flex-direction:column; }
+    .header { background:#1976d2; color:#fff; padding:16px; text-align:center; font-size:18px; font-weight:600; }
+    .login-box { padding:40px 20px; }
+    .login-box input { width:100%; height:44px; border:1px solid #ddd; border-radius:8px; padding:0 12px; font-size:16px; margin-bottom:12px; }
+    .btn { width:100%; height:44px; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; }
+    .btn-primary { background:#1976d2; color:#fff; }
+    .btn-success { background:#4caf50; color:#fff; }
+    .btn-warning { background:#ff9800; color:#fff; }
+    .btn-danger { background:#f44336; color:#fff; }
+    .btn-gray { background:#9e9e9e; color:#fff; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .section { margin:12px; background:#fff; border-radius:8px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .load-display { text-align:center; padding:20px 0; }
+    .load-number { font-size:64px; font-weight:700; line-height:1; }
+    .load-bar { height:12px; background:#e0e0e0; border-radius:6px; margin:12px 0; overflow:hidden; }
+    .load-bar-fill { height:100%; border-radius:6px; transition:width 0.3s; }
+    .load-info { display:flex; justify-content:space-between; font-size:13px; color:#666; }
+    .step-flow { display:flex; justify-content:space-around; margin:16px 0; }
+    .step { text-align:center; flex:1; }
+    .step-circle { width:40px; height:40px; border-radius:50%; line-height:40px; margin:0 auto 8px; font-size:18px; font-weight:600; }
+    .step-done { background:#4caf50; color:#fff; }
+    .step-current { background:#1976d2; color:#fff; }
+    .step-todo { background:#e0e0e0; color:#999; }
+    .step-label { font-size:12px; color:#666; }
+    .action-btn { width:100%; height:56px; border:none; border-radius:8px; font-size:18px; font-weight:600; cursor:pointer; margin-bottom:8px; }
+    .count-input { display:flex; align-items:center; justify-content:center; gap:12px; margin:12px 0; }
+    .count-input button { width:48px; height:48px; border-radius:8px; border:none; font-size:24px; font-weight:600; cursor:pointer; }
+    .count-input span { font-size:32px; font-weight:700; min-width:60px; text-align:center; }
+    .task-card { background:#fff3e0; border:1px solid #ffb74d; border-radius:8px; padding:12px; margin-bottom:8px; }
+    .task-card .task-no { font-size:12px; color:#999; }
+    .task-card .task-suggestion { font-size:14px; margin:4px 0; }
+    .task-card .task-meta { font-size:12px; color:#666; display:flex; justify-content:space-between; }
+    .station-select { width:100%; height:44px; border:1px solid #ddd; border-radius:8px; padding:0 12px; font-size:16px; margin-bottom:8px; }
+    .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; }
+    .toggle { width:48px; height:24px; border-radius:12px; position:relative; cursor:pointer; }
+    .toggle-on { background:#4caf50; }
+    .toggle-off { background:#ccc; }
+    .toggle::after { content:''; width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:2px; transition:0.3s; }
+    .toggle-on::after { left:26px; }
+    .toggle-off::after { left:2px; }
+    .conf-tag { font-size:11px; padding:2px 6px; border-radius:4px; }
+    .speed-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; }
+    .speed-display { font-size:24px; font-weight:700; }
+    .speed-unit { font-size:12px; color:#999; }
+    .net-status { display:inline-flex; align-items:center; gap:4px; font-size:11px; padding:2px 8px; border-radius:10px; }
+    .net-good { background:#e8f5e9; color:#4caf50; }
+    .net-weak { background:#fff3e0; color:#ff9800; }
+    .net-offline { background:#ffebee; color:#f44336; }
+    .net-dot { width:6px; height:6px; border-radius:50%; }
+    .lock-overlay { position:fixed; top:0; left:0; width:375px; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; }
+    .lock-icon { font-size:64px; margin-bottom:16px; }
+    .lock-text { font-size:18px; font-weight:600; margin-bottom:8px; }
+    .lock-sub { font-size:13px; color:#ccc; text-align:center; line-height:1.6; }
+    .lock-speed { font-size:48px; font-weight:700; color:#ff9800; margin:12px 0; }
+    .speed-btn-row { display:flex; gap:8px; margin-top:8px; }
+    .speed-btn { flex:1; height:40px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">校园摆渡车·司机端</div>
+  <template v-if="!driver">
+    <div class="login-box">
+      <template v-if="!showRegister">
+        <input v-model="loginForm.phone" placeholder="手机号" />
+        <input v-model="loginForm.password" type="password" placeholder="密码" />
+        <button class="btn btn-primary" @click="doLogin">登录</button>
+        <button class="btn" style="background:#e0e0e0;color:#333;margin-top:8px;" @click="showRegister=true">注册新司机</button>
+        <p style="text-align:center;margin-top:16px;color:#999;font-size:13px;">
+          仿真账号：13800000001~012 / 密码123456
+        </p>
+      </template>
+      <template v-else>
+        <input v-model="regForm.name" placeholder="姓名" />
+        <input v-model="regForm.phone" placeholder="手机号" />
+        <input v-model="regForm.password" type="password" placeholder="密码" />
+        <select v-model.number="regForm.vehicleId" style="width:100%;height:44px;border:1px solid #ddd;border-radius:8px;padding:0 12px;font-size:16px;margin-bottom:12px;">
+          <option value="">自动分配车辆</option>
+          <option v-for="v in availableVehicles" :key="v.vehicleId" :value="v.vehicleId" :disabled="v.assigned">
+            {{v.plateNo}}号车 - {{v.lineId}}号线 {{v.assigned?'(已占用)':'(可用)'}}
+          </option>
+        </select>
+        <button class="btn btn-primary" @click="doRegister">注册</button>
+        <button class="btn" style="background:#e0e0e0;color:#333;margin-top:8px;" @click="showRegister=false">返回登录</button>
+      </template>
+    </div>
+  </template>
+  <template v-else>
+    <div class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:16px;font-weight:600;">{{driver.name}}</span>
+        <span style="font-size:13px;color:#666;">车辆 {{vehicle ? vehicle.plateNo : '未绑定'}}</span>
+      </div>
+      <div class="toggle-row">
+        <span style="font-size:14px;">当日运行</span>
+        <div :class="['toggle', vehicle && vehicle.runningToday===1 ? 'toggle-on':'toggle-off']"
+             @click="toggleRunning"></div>
+      </div>
+    </div>
+
+    <div class="section" v-if="vehicle">
+      <div class="load-display">
+        <div class="load-number" :style="{color: loadColor}">{{vehicle.currentLoad}}/{{vehicle.capacity}}</div>
+        <div class="load-bar">
+          <div class="load-bar-fill" :style="{width: loadRate+'%', background: loadColor}"></div>
+        </div>
+        <div class="load-info">
+          <span>负载率 {{loadRate}}%</span>
+          <span>{{loadStatus}}</span>
+          <span>更新 {{vehicle.lastReportTime || '-'}}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" v-if="vehicle && vehicle.runningToday===1">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px;">行驶状态</div>
+      <div class="speed-row">
+        <div>
+          <span class="speed-display" :style="{color: speed>5?'#ff9800':'#4caf50'}">{{speed}}</span>
+          <span class="speed-unit">km/h</span>
+        </div>
+        <div :class="['net-status', netClass]">
+          <div :class="['net-dot', netDotClass]"></div>
+          {{netLabel}}
+        </div>
+      </div>
+      <div class="speed-btn-row">
+        <button class="speed-btn" style="background:#e3f2fd;color:#1976d2;" @click="setSpeed(0)">停车</button>
+        <button class="speed-btn" style="background:#fff3e0;color:#ff9800;" @click="setSpeed(10)">低速</button>
+        <button class="speed-btn" style="background:#ffebee;color:#f44336;" @click="setSpeed(30)">行驶</button>
+      </div>
+      <div style="font-size:12px;color:#999;margin-top:8px;" v-if="speed>5">
+        ⚠ 行驶中，操作已锁定，请停车后操作
+      </div>
+      <div style="font-size:12px;margin-top:8px;" v-if="pendingCount>0">
+        <span style="color:#ff9800;">📋 {{pendingCount}}条操作已缓存待补传</span>
+        <button style="margin-left:8px;padding:2px 8px;border:1px solid #ff9800;border-radius:4px;background:#fff;color:#ff9800;font-size:11px;cursor:pointer;" @click="syncPending">立即同步</button>
+      </div>
+    </div>
+
+    <div class="section" v-if="vehicle && vehicle.runningToday===1">
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px;">到站作业流程</div>
+      <div class="step-flow">
+        <div class="step">
+          <div :class="['step-circle', step>=1?'step-done':'step-todo']">1</div>
+          <div class="step-label">确认到站</div>
+        </div>
+        <div class="step">
+          <div :class="['step-circle', step>=2?'step-done':step===1?'step-current':'step-todo']">2</div>
+          <div class="step-label">下客</div>
+        </div>
+        <div class="step">
+          <div :class="['step-circle', step>=3?'step-done':step===2?'step-current':'step-todo']">3</div>
+          <div class="step-label">上客</div>
+        </div>
+      </div>
+
+      <template v-if="step===0">
+        <select class="station-select" v-model="arriveStationId">
+          <option value="">选择到站站点</option>
+          <option v-for="s in stations" :key="s.stationId" :value="s.stationId">
+            {{s.seq}}. {{s.stationName}}
+          </option>
+        </select>
+        <select class="station-select" v-model="direction">
+          <option value="go">去向</option>
+          <option value="back">回向</option>
+        </select>
+        <button class="action-btn btn-primary" @click="doArrive" :disabled="!arriveStationId">确认到站</button>
+      </template>
+
+      <template v-if="step===1">
+        <div style="text-align:center;font-size:14px;color:#666;margin-bottom:8px;">下车人数</div>
+        <div class="count-input">
+          <button style="background:#ff9800;color:#fff;" @click="alightCount=Math.max(0,alightCount-1)">−</button>
+          <span>{{alightCount}}</span>
+          <button style="background:#4caf50;color:#fff;" @click="alightCount=Math.min(vehicle.currentLoad,alightCount+1)">+</button>
+        </div>
+        <button class="action-btn btn-success" @click="doAlight">确认下客 {{alightCount}} 人</button>
+        <button class="action-btn btn-gray" @click="step=2">无人下车，跳过</button>
+      </template>
+
+      <template v-if="step===2">
+        <div style="text-align:center;font-size:14px;color:#666;margin-bottom:8px;">上车人数</div>
+        <div class="count-input">
+          <button style="background:#ff9800;color:#fff;" @click="boardCount=Math.max(0,boardCount-1)">−</button>
+          <span>{{boardCount}}</span>
+          <button style="background:#4caf50;color:#fff;" @click="boardCount=Math.min(vehicle.capacity-vehicle.currentLoad,boardCount+1)">+</button>
+        </div>
+        <button class="action-btn btn-success" @click="doBoard">确认上客 {{boardCount}} 人</button>
+        <button class="action-btn btn-gray" @click="finishStep">无人上车，完成</button>
+      </template>
+    </div>
+
+    <div class="section" v-if="vehicle">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px;">人数校准</div>
+      <div class="count-input">
+        <button style="background:#ff9800;color:#fff;" @click="calibrateValue=Math.max(0,calibrateValue-1)">−</button>
+        <span>{{calibrateValue}}</span>
+        <button style="background:#4caf50;color:#fff;" @click="calibrateValue++">+</button>
+      </div>
+      <button class="btn btn-warning" @click="doCalibrate" style="height:40px;font-size:14px;">提交校准</button>
+    </div>
+
+    <div class="section" v-if="tasks.length">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px;">调度任务</div>
+      <div class="task-card" v-for="t in tasks" :key="t.id">
+        <div class="task-no">{{t.taskNo}} [{{t.type}}]</div>
+        <div class="task-suggestion">{{t.suggestion}}</div>
+        <div class="task-meta">
+          <span>优先级:{{t.priority}}</span>
+          <span>{{t.status}}</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-success" style="height:36px;font-size:13px;flex:1;" @click="acceptTask(t.id)">接单</button>
+          <button class="btn btn-danger" style="height:36px;font-size:13px;flex:1;" @click="rejectTask(t.id)">拒单</button>
+          <button class="btn btn-gray" style="height:36px;font-size:13px;flex:1;" @click="completeTask(t.id)">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lock-overlay" v-if="isLocked">
+      <div class="lock-icon">🚗</div>
+      <div class="lock-text">行驶中·操作已锁定</div>
+      <div class="lock-speed">{{speed}} km/h</div>
+      <div class="lock-sub">检测到车速超过5km/h<br>为保障行车安全，所有操作已锁定<br>请停车后进行到站作业</div>
+      <button class="btn btn-primary" style="width:200px;margin-top:24px;" @click="setSpeed(0)">已停车·解锁</button>
+    </div>
+  </template>
+</div>
+<script src="config.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const {createApp,ref,reactive,computed,onMounted,onUnmounted}=Vue;
+const _BASE=window.BACKEND_URL||window.location.origin;
+const API=_BASE+'/api';
+createApp({setup(){
+    const driver=ref(null), vehicle=ref(null);
+    const loginForm=reactive({phone:'13800000001',password:'123456'});
+    const showRegister=ref(false);
+    const regForm=reactive({name:'',phone:'',password:'',vehicleId:''});
+    const availableVehicles=ref([]);
+    const stations=ref([]), direction=ref('go');
+    const step=ref(0), arriveStationId=ref('');
+    const alightCount=ref(0), boardCount=ref(0), calibrateValue=ref(0);
+    const tasks=ref([]);
+    const speed=ref(0);
+    const netStatus=ref('good');
+    const netLatency=ref(0);
+    const pendingCount=ref(0);
+    let ws=null, wsFailCount=0, pollTimer=null, latencyTimer=null;
+    let idbDB=null;
+
+    function initIDB(){
+      try{
+        const req=indexedDB.open('shuttle_cache',1);
+        req.onupgradeneeded=(e)=>{
+          const db=e.target.result;
+          if(!db.objectStoreNames.contains('pending'))db.createObjectStore('pending',{keyPath:'id',autoIncrement:true});
+        };
+        req.onsuccess=(e)=>{idbDB=e.target.result;updatePendingCount();};
+      }catch(e){console.warn('IndexedDB不可用',e);}
+    }
+    function cacheAction(url,data){
+      if(!idbDB)return;
+      try{
+        const tx=idbDB.transaction(['pending'],'readwrite');
+        tx.objectStore('pending').add({url,data,ts:Date.now()});
+        tx.oncomplete=()=>{updatePendingCount();};
+      }catch(e){console.warn('缓存失败',e);}
+    }
+    function updatePendingCount(){
+      if(!idbDB)return;
+      try{
+        const tx=idbDB.transaction(['pending'],'readonly');
+        const req=tx.objectStore('pending').count();
+        req.onsuccess=()=>{pendingCount.value=req.result;};
+      }catch(e){}
+    }
+    async function syncPending(){
+      if(!idbDB||pendingCount.value===0)return;
+      const tx=idbDB.transaction(['pending'],'readwrite');
+      const store=tx.objectStore('pending');
+      const req=store.getAll();
+      req.onsuccess=async()=>{
+        const items=req.result;
+        for(const item of items){
+          try{
+            await fetch(API+item.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item.data)});
+            store.delete(item.id);
+          }catch(e){break;}
+        }
+        updatePendingCount();
+      };
+    }
+
+    const isLocked=computed(()=>speed.value>5);
+    const netClass=computed(()=>netStatus.value==='good'?'net-good':netStatus.value==='weak'?'net-weak':'net-offline');
+    const netDotClass=computed(()=>netStatus.value==='good'?'net-good':netStatus.value==='weak'?'net-weak':'net-offline');
+    const netLabel=computed(()=>netStatus.value==='good'?'实时':netStatus.value==='weak'?'弱网轮询':'离线');
+
+    const loadRate=computed(()=>{if(!vehicle.value)return 0;return Math.round(vehicle.value.currentLoad*100/vehicle.value.capacity);});
+    const loadColor=computed(()=>{const r=loadRate.value;return r>=90?'#f44336':r>=70?'#ff9800':'#4caf50';});
+    const loadStatus=computed(()=>{const r=loadRate.value;return r>=90?'高负载':r>=70?'中等':'正常';});
+
+    function setSpeed(v){speed.value=v;}
+
+    async function post(url,data){
+      const t0=Date.now();
+      try{
+        const r=await fetch(API+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        netLatency.value=Date.now()-t0;
+        updateNetStatus();
+        return r.json();
+      }catch(e){
+        netStatus.value='offline';
+        cacheAction(url,data);
+        return {code:0,msg:'网络异常,已缓存待补传'};
+      }
+    }
+    async function get(url){
+      const t0=Date.now();
+      try{
+        const r=await fetch(API+url);
+        netLatency.value=Date.now()-t0;
+        updateNetStatus();
+        return r.json();
+      }catch(e){
+        netStatus.value='offline';
+        return {code:0,msg:'网络异常'};
+      }
+    }
+
+    function updateNetStatus(){
+      if(netLatency.value>2000)netStatus.value='offline';
+      else if(netLatency.value>500)netStatus.value='weak';
+      else netStatus.value='good';
+      if(netStatus.value!=='good'&&wsFailCount>=2){startPolling();}
+    }
+
+    async function doLogin(){
+      const res=await post('/driver/login',loginForm);
+      if(res.code===200){driver.value=res.data.driver;if(res.data.vehicle){vehicle.value=res.data.vehicle;calibrateValue.value=vehicle.value.currentLoad;await loadStations();await loadTasks();connectWS();}}
+      else{alert(res.msg);}
+    }
+
+    async function loadAvailableVehicles(){
+      try{
+        const res=await get('/driver/available-vehicles');
+        if(res.code===200)availableVehicles.value=res.data;
+      }catch(e){}
+    }
+
+    async function doRegister(){
+      if(!regForm.phone||!regForm.password){alert('请填写手机号和密码');return;}
+      const data={name:regForm.name,phone:regForm.phone,password:regForm.password};
+      if(regForm.vehicleId)data.vehicleId=regForm.vehicleId;
+      const res=await post('/driver/register',data);
+      if(res.code===200){
+        alert('注册成功！车辆'+(res.data.vehicle?res.data.vehicle.plateNo:'')+'已分配');
+        loginForm.phone=regForm.phone;loginForm.password=regForm.password;
+        showRegister.value=false;
+        await doLogin();
+      }else{alert(res.msg||'注册失败');}
+    }
+
+    async function loadStations(){
+      if(!vehicle.value)return;
+      const res=await get('/line/'+vehicle.value.lineId+'/stations?direction='+direction.value);
+      if(res.code===200)stations.value=res.data;
+    }
+
+    async function loadTasks(){
+      if(!vehicle.value)return;
+      const res=await get('/driver/tasks/'+vehicle.value.id);
+      if(res.code===200)tasks.value=res.data;
+    }
+
+    function connectWS(){
+      try{
+        ws=new WebSocket((_BASE.startsWith('https')?'wss://':'ws://')+_BASE.replace(/^https?:\/\//,'')+'/ws');
+        ws.onopen=()=>{wsFailCount=0;netStatus.value='good';stopPolling();};
+        ws.onmessage=(e)=>{
+          const msg=JSON.parse(e.data);
+          if(msg.type==='vehicle_update'&&msg.data.id===vehicle.value.id){vehicle.value=msg.data;calibrateValue.value=msg.data.currentLoad;}
+          if(msg.type==='task_new'||msg.type==='task_assigned'||msg.type==='task_update'){loadTasks();}
+        };
+        ws.onerror=()=>{wsFailCount++;};
+        ws.onclose=()=>{
+          wsFailCount++;
+          if(wsFailCount>=2){netStatus.value='weak';startPolling();}
+          setTimeout(connectWS,3000);
+        };
+      }catch(e){
+        wsFailCount++;
+        netStatus.value='weak';
+        startPolling();
+      }
+    }
+
+    function startPolling(){
+      if(pollTimer)return;
+      pollTimer=setInterval(async()=>{
+        if(!vehicle.value)return;
+        try{
+          const res=await get('/driver/tasks/'+vehicle.value.id);
+          if(res.code===200)tasks.value=res.data;
+          const vres=await get('/vehicle/'+vehicle.value.id);
+          if(vres.code===200){vehicle.value=vres.data;calibrateValue.value=vres.data.currentLoad;}
+        }catch(e){netStatus.value='offline';}
+      },5000);
+    }
+    function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
+
+    async function toggleRunning(){
+      if(!vehicle.value)return;
+      const running=vehicle.value.runningToday===1?false:true;
+      const res=await post('/driver/set-running',{vehicleId:vehicle.value.id,running});
+      if(res.code===200)vehicle.value=res.data;
+    }
+
+    async function doArrive(){
+      const res=await post('/driver/arrive',{vehicleId:vehicle.value.id,stationId:arriveStationId.value,direction:direction.value});
+      if(res.code===200){vehicle.value=res.data;step.value=1;alightCount.value=0;}
+    }
+    async function doAlight(){
+      const res=await post('/driver/alight',{vehicleId:vehicle.value.id,stationId:arriveStationId.value,count:alightCount.value,direction:direction.value});
+      if(res.code===200){vehicle.value=res.data;step.value=2;boardCount.value=0;}
+    }
+    async function doBoard(){
+      const res=await post('/driver/board',{vehicleId:vehicle.value.id,stationId:arriveStationId.value,lineId:vehicle.value.lineId,count:boardCount.value,direction:direction.value});
+      if(res.code===200){vehicle.value=res.data;finishStep();}
+    }
+    function finishStep(){step.value=0;arriveStationId.value='';alightCount.value=0;boardCount.value=0;}
+
+    async function doCalibrate(){
+      const res=await post('/driver/calibrate',{vehicleId:vehicle.value.id,afterLoad:calibrateValue.value});
+      if(res.code===200)vehicle.value=res.data;
+    }
+
+    async function acceptTask(id){const res=await post('/driver/task/accept',{taskId:id,vehicleId:vehicle.value.id});if(res.code===200)loadTasks();}
+    async function rejectTask(id){const res=await post('/driver/task/reject',{taskId:id,reason:'司机拒单'});if(res.code===200)loadTasks();}
+    async function completeTask(id){const res=await post('/driver/task/complete',{taskId:id});if(res.code===200)loadTasks();}
+
+    onMounted(()=>{
+      initIDB();
+      loadAvailableVehicles();
+      window.addEventListener('online',()=>{netStatus.value='good';syncPending();});
+      window.addEventListener('offline',()=>{netStatus.value='offline';});
+    });
+    onUnmounted(()=>{if(ws)ws.close();stopPolling();});
+    return {driver,vehicle,loginForm,showRegister,regForm,availableVehicles,stations,direction,step,arriveStationId,alightCount,boardCount,calibrateValue,tasks,speed,isLocked,netClass,netDotClass,netLabel,pendingCount,setSpeed,syncPending,loadRate,loadColor,loadStatus,doLogin,doRegister,loadAvailableVehicles,toggleRunning,doArrive,doAlight,doBoard,finishStep,doCalibrate,acceptTask,rejectTask,completeTask};
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
