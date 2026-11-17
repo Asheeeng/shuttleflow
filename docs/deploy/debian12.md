@@ -58,7 +58,8 @@ sudo install -d -o root -g root -m 0700 /etc/shuttleflow
 首次从私有/组内仓库克隆源码后，检查 `origin` 指向 `Asheeeng/shuttleflow`，再将仓库放到`/opt/shuttleflow/repository`。生产服务器使用只读Deploy Key，不在仓库或环境文件存放GitHub个人令牌。更新脚本会按Git提交建立独立release目录，不修改正在运行的源码目录。
 
 ```bash
-sudo git clone --branch main git@github.com:Asheeeng/shuttleflow.git /opt/shuttleflow/repository
+sudo git clone --branch codex/v1.2-hardening-passenger-auth \
+  https://github.com/Asheeeng/shuttleflow.git /opt/shuttleflow/repository
 ```
 
 ## 3. 配置MySQL、Redis与服务密钥
@@ -171,10 +172,18 @@ sudo certbot renew --dry-run
 脚本要求`/opt/shuttleflow/repository`已克隆本仓库，部署用户可以读取Git远端，root可写release目录。运行：
 
 ```bash
-sudo /opt/shuttleflow/repository/deploy/bin/update.sh
+sudo env SHUTTLE_DEPLOY_BRANCH=codex/v1.2-hardening-passenger-auth \
+  /opt/shuttleflow/repository/deploy/bin/update.sh
 ```
 
-首次运行使用仓库目录中的脚本，之后可使用`/opt/shuttleflow/current/deploy/bin/update.sh`。脚本拉取指定分支、构建Java包、建立Python虚拟环境、原子切换`current`链接并进行健康检查。构建失败不切换；服务重启或就绪检查失败会恢复先前链接并重启服务。脚本不会自动执行SQL或删除数据库。数据库迁移应在应用更新前由管理员单独审查和执行。
+每次必须显式设置`SHUTTLE_DEPLOY_BRANCH`；未设置时脚本会拒绝运行，不会默认拉取V1.1的`main`。部署本分支的命令如下：
+
+```bash
+sudo env SHUTTLE_DEPLOY_BRANCH=codex/v1.2-hardening-passenger-auth \
+  /opt/shuttleflow/current/deploy/bin/update.sh
+```
+
+脚本拉取指定分支、构建Java包、建立Python虚拟环境、原子切换`current`链接并进行健康检查。构建失败不切换；服务重启或就绪检查失败会恢复先前链接并重启服务。脚本不会自动执行SQL或删除数据库。数据库迁移应在应用更新前由管理员单独审查和执行。
 
 回滚到本机保留的提交：
 

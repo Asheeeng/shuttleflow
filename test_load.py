@@ -17,7 +17,9 @@ ADMIN_USER = os.environ["SHUTTLE_TEST_ADMIN_USERNAME"]
 ADMIN_PASSWORD = os.environ["SHUTTLE_TEST_ADMIN_PASSWORD"]
 DRIVER_PHONE = os.environ["SHUTTLE_TEST_DRIVER_PHONE"]
 DRIVER_PASSWORD = os.environ["SHUTTLE_TEST_DRIVER_PASSWORD"]
-LEVELS = [10, 30, 50, 100]
+LEVELS = [int(value) for value in os.environ.get("SHUTTLE_LOAD_LEVELS", "10,30,50,100").split(",") if value.strip()]
+if not LEVELS or any(level not in (10, 30, 50, 100) for level in LEVELS):
+    raise ValueError("SHUTTLE_LOAD_LEVELS只能包含10、30、50、100")
 
 
 class HttpClient:

@@ -4,7 +4,11 @@ set -Eeuo pipefail
 ROOT="${SHUTTLE_INSTALL_DIR:-/opt/shuttleflow}"
 REPO="$ROOT/repository"
 RELEASES="$ROOT/releases"
-BRANCH="${SHUTTLE_DEPLOY_BRANCH:-main}"
+BRANCH="${SHUTTLE_DEPLOY_BRANCH:-}"
+if [[ -z "$BRANCH" ]]; then
+  echo "必须显式设置 SHUTTLE_DEPLOY_BRANCH；拒绝默认拉取 main。" >&2
+  exit 2
+fi
 JAVA_UNIT=shuttleflow
 AI_UNIT=shuttle-ai
 mkdir -p "$RELEASES"
