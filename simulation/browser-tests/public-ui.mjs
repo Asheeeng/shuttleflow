@@ -28,6 +28,16 @@ try {
   }
   await nav.getByRole('tab',{name:'车辆运行'}).click();
   await page.locator('[data-history]').selectOption(run);
+  const archiveResult=await page.evaluate(async runId=>(
+    await fetch('/api/operation/view?run='+encodeURIComponent(runId))
+  ).json(),run);
+  assert.equal(archiveResult.code,200);
+  const completed=Object.values(archiveResult.data.trips).find(trip=>
+    trip.status==='completed'&&trip.stops.filter(stop=>stop.arrived!==null).length>=3);
+  assert.ok(completed,'运行档案中必须有已完成行程');
+  await page.locator('[name=op-route]').selectOption(completed.lineId+':'+completed.direction);
+  await page.locator('[name=op-trip]').selectOption(completed.id);
+
   await page.getByRole('button',{name:'回放行程',exact:true}).click();
   await page.getByRole('button',{name:'暂停回放',exact:true}).click();
   const next=page.waitForEvent('download');
