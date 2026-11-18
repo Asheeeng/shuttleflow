@@ -150,35 +150,4 @@ ENV
 kill "$BOOT_PID"; wait "$BOOT_PID"; BOOT_PID=
 install -m 0644 "$RELEASE"/deploy/v13/units/* /etc/systemd/system/
 systemctl daemon-reload
-systemctl start shuttle-v13.target
-for _ in $(seq 1 60); do
-  if curl -fsS --max-time 2 http://127.0.0.1:18080/api/health/ready | grep -q READY; then break; fi
-  sleep 1
-done
-curl -fsS http://127.0.0.1:18080/api/health/ready | grep -q READY
-curl -fsS http://127.0.0.1:18000/health >/dev/null
-systemctl start shuttle-v13-backup.service
-systemctl enable --now shuttle-v13-backup.timer shuttle-v13-monitor.timer
-
-[[ "$(getent ahostsv4 "$DOMAIN" | awk '{print $1}' | sort -u)" == 43.251.117.159 ]]
-install -d -m 0755 /var/www/shuttle-v13-acme
-sed "s/@DOMAIN@/$DOMAIN/g" "$RELEASE/deploy/v13/nginx-http.conf" > "$SITE"
-ln -s "$SITE" "$LINK"
-/usr/sbin/nginx -t && systemctl reload nginx
-certbot certonly --webroot -w /var/www/shuttle-v13-acme -d "$DOMAIN" --non-interactive --agree-tos --cert-name "$DOMAIN"
-certbot renew --cert-name "$DOMAIN" --dry-run
-cat > /etc/letsencrypt/renewal-hooks/deploy/shuttle-v13-reload <<'HOOK'
-#!/bin/sh
-[ "${RENEWED_LINEAGE:-}" = /etc/letsencrypt/live/v13.shuttleflow-gzu.duckdns.org ] || exit 0
-/usr/sbin/nginx -t && /usr/bin/systemctl reload nginx
-HOOK
-chmod 0755 /etc/letsencrypt/renewal-hooks/deploy/shuttle-v13-reload
-printf 'v13gate:%s\n' "$(printf '%s\n' "$EDGE" | openssl passwd -6 -stdin)" > "$CONF/htpasswd"
-chgrp www-data "$CONF/htpasswd"
-chmod 0640 "$CONF/htpasswd"
-chmod 0751 "$CONF"
-sed "s/@DOMAIN@/$DOMAIN/g" "$RELEASE/deploy/v13/nginx-https.conf" > "$SITE"
-/usr/sbin/nginx -t && systemctl reload nginx
-[[ "$(curl -sS -o /dev/null -w '%{http_code}' "https://$DOMAIN/")" == 401 ]]
-SHUTTLE_V13_ACCESS_PASSWORD="$EDGE" "$ROOT/venv/bin/python" -I "$RELEASE/deploy/v13/public_acceptance.py"
-echo "V1.3 安装完成，当前已启动。访问 https://$DOMAIN/login.html?role=admin&next=simulation.html"
+SHUTTLE_V13_ACCESS_PASSWORD="$EDGE" bash "$RELEASE/deploy/v13/finish.sh"
