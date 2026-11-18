@@ -14,6 +14,10 @@ public class Request {
     private Long lineId;
     private String direction;
     private Long destStationId;
+    private Long boardedVehicleId;
+    private String tripId;
+    private LocalDateTime boardedAt;
+    private LocalDateTime alightedAt;
     private String type;
     private String status;
     @JsonIgnore

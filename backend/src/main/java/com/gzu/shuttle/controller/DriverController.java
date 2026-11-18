@@ -19,10 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RestController
 @RequestMapping("/api/driver")
 public class DriverController {
+    @Autowired private com.gzu.shuttle.service.OperationClock operationClock;
     @Autowired private VehicleMapper vehicleMapper;
     @Autowired private DriverMapper driverMapper;
     @Autowired private TaskMapper taskMapper;
     @Autowired private EventService eventService;
+    @Autowired private RequestMapper requests;
+    @Autowired private StationQueueMapper queues;
     @Autowired private TaskService taskService;
 
     @PostMapping("/arrive")
@@ -79,6 +82,15 @@ public class DriverController {
             count = afterLoad - vehicle.getCurrentLoad();
         }
         if (vehicle.getCurrentLoad() + count > vehicle.getCapacity()) return Result.fail(409, "车辆剩余座位不足，不能超载");
+        if (operationClock.trip(vehicleId) != null && count > 0) {
+            if (!java.util.Objects.equals(stationId, vehicle.getCurrentStationId())
+                    || !java.util.Objects.equals(direction, vehicle.getDirection())
+                    || !java.util.Objects.equals(lineId, vehicle.getLineId()))
+                return Result.fail(409, "请按仿真车辆当前站点和方向上报");
+            long waiting = requests.selectCount(new QueryWrapper<Request>()
+                    .eq("line_id", lineId).eq("station_id", stationId).eq("direction", direction).eq("status", "waiting"));
+            if (waiting < count) return Result.fail(409, "上客人数超过本站有效候车人数");
+        }
         sendEvent("board", vehicleId, stationId, lineId, direction, count, vehicle.getCurrentLoad() + count, request);
         return Result.ok(vehicleMapper.selectById(vehicleId));
     }
@@ -206,13 +218,22 @@ public class DriverController {
         event.setType(type);
         event.setSource("driver");
         event.setVehicleId(vehicleId);
-        event.setStationId(stationId);
+        event.setTripId(operationClock.trip(vehicleId));
+        boolean tracked = event.getTripId() != null;
+        event.setStationId(tracked && stationId == null && v != null ? v.getCurrentStationId() : stationId);
         event.setLineId(lineId != null ? lineId : (v != null ? v.getLineId() : null));
-        event.setDirection(direction);
+        event.setDirection(tracked && direction == null && v != null ? v.getDirection() : direction);
         event.setCount(count);
         event.setAfterLoad(afterLoad);
+        if (tracked && v != null && "depart".equals(type)) {
+            event.setAfterLoad(v.getCurrentLoad());
+            StationQueue queue = queues.selectOne(new QueryWrapper<StationQueue>()
+                    .eq("line_id", event.getLineId()).eq("station_id", event.getStationId())
+                    .eq("direction", event.getDirection()));
+            event.setWaitingAtDeparture(queue == null ? 0 : queue.getWaitingCount());
+        }
         event.setConfidence(BigDecimal.ONE);
-        event.setEventTime(LocalDateTime.now());
+        event.setEventTime(operationClock.now());
         eventService.receiveEvent(event);
     }
 }

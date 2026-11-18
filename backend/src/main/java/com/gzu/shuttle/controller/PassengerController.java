@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Isolation;
 @RestController
 @RequestMapping("/api/passenger")
 public class PassengerController {
+    @Autowired private com.gzu.shuttle.service.OperationClock operationClock;
     @Autowired private PassengerMapper passengerMapper;
     @Autowired private StationMapper stationMapper;
     @Autowired private RequestMapper requestMapper;
@@ -57,6 +58,21 @@ public class PassengerController {
         route.eq("station_id", station.getId()).eq("line_id", lineId).eq("direction", direction);
         if (lineStationMapper.selectCount(route) == 0) return Result.fail(400, "所选站点不属于该线路方向");
 
+        Long destination = longValue(body.get("destStationId"));
+        if (body.get("destStationId") != null || operationClock.active()) {
+            List<LineStation> stops = lineStationMapper.selectList(new QueryWrapper<LineStation>()
+                    .eq("line_id", lineId).eq("direction", direction).orderByAsc("seq"));
+            if (body.get("destStationId") == null && !stops.isEmpty())
+                destination = stops.get(stops.size() - 1).getStationId();
+            boolean pastOrigin = false;
+            boolean valid = false;
+            for (LineStation stop : stops) {
+                if (pastOrigin && stop.getStationId().equals(destination)) valid = true;
+                if (stop.getStationId().equals(station.getId())) pastOrigin = true;
+            }
+            if (!valid) return Result.fail(400, "请选择同方向的下游目的站");
+        }
+
         HttpSession session = httpRequest.getSession(false);
         if (session == null) return Result.fail(401, "请先登录或选择游客访问");
         Object roleValue = session.getAttribute(AuthSessionService.ROLE);
@@ -78,10 +94,11 @@ public class PassengerController {
         req.setStationId(station.getId());
         req.setLineId(lineId);
         req.setDirection(direction);
+        req.setDestStationId(destination);
         req.setType("checkin");
         req.setStatus("waiting");
-        req.setCreatedAt(LocalDateTime.now());
-        req.setUpdatedAt(LocalDateTime.now());
+        req.setCreatedAt(operationClock.now());
+        req.setUpdatedAt(operationClock.now());
         req.setActiveKey(activeKey);
         try {
             requestMapper.insert(req);
@@ -102,7 +119,7 @@ public class PassengerController {
         event.setDirection(direction);
         event.setCount(1);
         event.setConfidence(BigDecimal.ONE);
-        event.setEventTime(LocalDateTime.now());
+        event.setEventTime(operationClock.now());
         eventService.receiveEvent(event);
 
         return Result.ok(checkinView(station, req, lineId, direction));
@@ -136,7 +153,7 @@ public class PassengerController {
         } else if (!ownsGuestRequest && !"PASSENGER".equals(role)) {
             return Result.fail(403, "当前账号不能取消乘客候车请求");
         }
-        if (!"waiting".equals(req.getStatus()) || requestMapper.cancelWaiting(requestId) != 1)
+        if (!"waiting".equals(req.getStatus()) || requestMapper.cancelAt(requestId, operationClock.now()) != 1)
             return Result.fail(409, "该候车请求已处理，不能重复取消");
 
         ShuttleEvent event = new ShuttleEvent();
@@ -148,7 +165,7 @@ public class PassengerController {
         event.setDirection(req.getDirection());
         event.setCount(-1);
         event.setConfidence(BigDecimal.ONE);
-        event.setEventTime(LocalDateTime.now());
+        event.setEventTime(operationClock.now());
         eventService.receiveEvent(event);
         return Result.ok();
     }

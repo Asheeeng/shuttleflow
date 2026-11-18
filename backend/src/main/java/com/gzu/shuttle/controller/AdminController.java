@@ -8,6 +8,7 @@ import com.gzu.shuttle.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -28,6 +29,7 @@ public class AdminController {
     @Autowired private DispatchService dispatchService;
     @Autowired private EventService eventService;
     @Autowired private SurgeDetectionService surgeDetectionService;
+    @Value("${shuttle.simulation.enabled:false}") private boolean simulationEnabled;
     @Autowired private MultiVehicleAssignService multiVehicleAssignService;
     @Autowired private StatsService statsService;
     @Autowired private com.gzu.shuttle.service.AiServiceClient aiServiceClient;
@@ -288,6 +290,14 @@ public class AdminController {
         return Result.ok(surgeDetectionService.getStatus());
     }
 
+    @PostMapping("/simulation/cusum/tick")
+    public Result<Map<String, Object>> simulationCusumTick(@RequestBody(required = false) Map<String, Object> body) {
+        if (!simulationEnabled) return Result.fail(404, "仿真检测入口未启用");
+        int intervalSeconds = body == null || body.get("intervalSeconds") == null ? 60
+                : Integer.parseInt(body.get("intervalSeconds").toString());
+        return Result.ok(surgeDetectionService.detectNow(intervalSeconds));
+    }
+
     @GetMapping("/assign")
     public Result<Map<String, Object>> assign(@RequestParam Long stationId,
                                                @RequestParam Long lineId,
@@ -296,8 +306,12 @@ public class AdminController {
     }
 
     @GetMapping("/station-vehicles")
-    public Result<List<Map<String, Object>>> stationVehicles(@RequestParam Long stationId) {
-        return Result.ok(multiVehicleAssignService.stationVehicles(stationId));
+    public Result<List<Map<String, Object>>> stationVehicles(@RequestParam Long stationId,
+                                                              @RequestParam(required = false) Long lineId,
+                                                              @RequestParam(required = false) String direction) {
+        if (direction != null && !"go".equals(direction) && !"back".equals(direction))
+            return Result.fail(400, "方向必须为go或back");
+        return Result.ok(multiVehicleAssignService.stationVehicles(stationId, lineId, direction));
     }
 
     @GetMapping("/stats/kpi")

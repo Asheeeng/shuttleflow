@@ -42,7 +42,8 @@ public class MultiVehicleAssignService {
         result.put("waitingCount", waiting);
 
         Map<String, Object> aiResult = aiClient.assign(stationId, lineId, direction, waiting);
-        if (aiResult != null && aiResult.containsKey("data")) {
+        if (aiResult != null && Integer.valueOf(200).equals(asInt(aiResult.get("code")))
+                && aiResult.containsKey("data")) {
             Object data = aiResult.get("data");
             if (data instanceof Map) {
                 Map<String, Object> aiData = (Map<String, Object>) data;
@@ -53,7 +54,8 @@ public class MultiVehicleAssignService {
         }
 
         QueryWrapper<Vehicle> vqw = new QueryWrapper<>();
-        vqw.eq("line_id", lineId).eq("running_today", 1).ne("status", "offline")
+        vqw.eq("line_id", lineId).eq("direction", direction).eq("running_today", 1)
+           .in("status", "running", "standby")
            .isNotNull("current_station_id");
         List<Vehicle> vehicles = vehicleMapper.selectList(vqw);
         List<Vehicle> atStation = new ArrayList<>();
@@ -137,9 +139,20 @@ public class MultiVehicleAssignService {
         return (int)Math.round(v.getCurrentLoad() * 0.3);
     }
 
+    private Integer asInt(Object value) {
+        return value instanceof Number ? ((Number) value).intValue() : null;
+    }
+
     public List<Map<String, Object>> stationVehicles(Long stationId) {
+        return stationVehicles(stationId, null, null);
+    }
+
+    public List<Map<String, Object>> stationVehicles(Long stationId, Long lineId, String direction) {
         QueryWrapper<Vehicle> qw = new QueryWrapper<>();
-        qw.eq("current_station_id", stationId).ne("status", "offline");
+        qw.eq("current_station_id", stationId).eq("running_today", 1)
+          .in("status", "running", "standby");
+        if (lineId != null) qw.eq("line_id", lineId);
+        if (direction != null) qw.eq("direction", direction);
         List<Vehicle> vehicles = vehicleMapper.selectList(qw);
         List<Map<String, Object>> result = new ArrayList<>();
         for (Vehicle v : vehicles) {
@@ -147,6 +160,7 @@ public class MultiVehicleAssignService {
             m.put("vehicleId", v.getId());
             m.put("plateNo", v.getPlateNo());
             m.put("lineId", v.getLineId());
+            m.put("direction", v.getDirection());
             m.put("currentLoad", v.getCurrentLoad());
             m.put("capacity", v.getCapacity());
             m.put("status", v.getStatus());

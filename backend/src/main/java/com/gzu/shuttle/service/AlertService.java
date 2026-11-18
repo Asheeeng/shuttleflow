@@ -12,12 +12,13 @@ import java.util.List;
 
 @Service
 public class AlertService {
+    @org.springframework.beans.factory.annotation.Autowired private OperationClock operationClock = new OperationClock();
     @Autowired private AlertMapper alertMapper;
 
     public Alert createAlert(String level, String type, Long stationId, Long vehicleId, Long lineId, String message) {
         QueryWrapper<Alert> qw = new QueryWrapper<>();
-        qw.eq("station_id", stationId).eq("type", type).eq("status", "pending")
-          .ge("created_at", LocalDateTime.now().minusMinutes(5));
+        qw.eq("station_id", stationId).eq("type", type).eq("level", level).eq("line_id", lineId).eq("status", "pending")
+          .ge("created_at", operationClock.now().minusMinutes(5));
         if (alertMapper.selectCount(qw) > 0) return null;
         Alert a = new Alert();
         a.setLevel(level);
@@ -27,6 +28,7 @@ public class AlertService {
         a.setLineId(lineId);
         a.setMessage(message);
         a.setStatus("pending");
+        a.setCreatedAt(operationClock.now());
         alertMapper.insert(a);
         ShuttleWebSocketHandler.broadcast("alert", a);
         return a;
@@ -48,7 +50,7 @@ public class AlertService {
     public Alert suppress(Long id) { return updateStatus(id, "suppressed"); }
     public Alert resolve(Long id) {
         Alert a = updateStatus(id, "resolved");
-        if (a != null) { a.setResolvedAt(LocalDateTime.now()); alertMapper.updateById(a); }
+        if (a != null) { a.setResolvedAt(operationClock.now()); alertMapper.updateById(a); }
         return a;
     }
 

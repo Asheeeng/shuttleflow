@@ -16,8 +16,10 @@ public class ShuttleEvent {
     private Long stationId;
     private Long lineId;
     private String direction;
+    private String tripId;
     private Integer count;
     private Integer afterLoad;
+    private Integer waitingAtDeparture;
     private BigDecimal confidence;
     private LocalDateTime eventTime;
     private LocalDateTime reportTime;

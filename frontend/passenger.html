@@ -65,8 +65,10 @@
     .passenger-account span { max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     @media(max-width:390px) { .passenger-account { right:7px; gap:4px; } .passenger-account span { max-width:58px; } }
   </style>
+  <link rel="stylesheet" href="operation.css">
 </head>
 <body class="neo-page neo-passenger">
+  <section class="op" data-operation="passenger" hidden></section>
 <div id="app">
   <div class="header">
     <button class="back-btn" @click="goBack">←</button>
@@ -244,7 +246,7 @@ const passengerApp=createApp({
       try{
         const res=await fetch(`${API_BASE}/passenger/checkin`,{
           method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),
-          body:JSON.stringify({qrCode:fromStation.value.qrCode||qrCode,stationId:fromStation.value.stationId,lineId:lineId.value,direction:direction.value})
+          body:JSON.stringify({qrCode:fromStation.value.qrCode||qrCode,stationId:fromStation.value.stationId,lineId:lineId.value,direction:direction.value,destStationId:toStationId.value})
         });
         const data=await res.json();
         if(!res.ok||data.code!==200)throw new Error(data.msg||'签到失败');
@@ -290,5 +292,6 @@ const passengerApp=createApp({
 });
 window.ShuttleAuth.mountPassenger(passengerApp);
 </script>
+<script src="operation.js" defer></script>
 </body>
 </html>

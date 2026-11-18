@@ -22,6 +22,7 @@ public class StatsService {
     private static final Logger log = LoggerFactory.getLogger(StatsService.class);
 
     @Autowired private StatsMapper statsMapper;
+    @Autowired private OperationClock operationClock;
     @Autowired private StationQueueMapper queueMapper;
     @Autowired private TaskMapper taskMapper;
     @Autowired private VehicleMapper vehicleMapper;
@@ -67,7 +68,7 @@ public class StatsService {
         pendingQw.in("status", "pending", "assigned", "executing");
         int pendingTaskCount = taskMapper.selectCount(pendingQw).intValue();
         QueryWrapper<Task> todayQw = new QueryWrapper<>();
-        todayQw.ge("created_at", LocalDate.now().atStartOfDay());
+        todayQw.ge("created_at", operationClock.now().toLocalDate().atStartOfDay());
         List<Task> todayTasks = taskMapper.selectList(todayQw);
         int completedToday = (int) todayTasks.stream().filter(t -> "completed".equals(t.getStatus())).count();
         int escalatedToday = (int) todayTasks.stream().filter(t -> "escalated".equals(t.getStatus())).count();
@@ -82,13 +83,13 @@ public class StatsService {
         alertQw.eq("status", "pending");
         int pendingAlerts = alertMapper.selectCount(alertQw).intValue();
         QueryWrapper<Alert> todayAlertQw = new QueryWrapper<>();
-        todayAlertQw.ge("created_at", LocalDate.now().atStartOfDay());
+        todayAlertQw.ge("created_at", operationClock.now().toLocalDate().atStartOfDay());
         int todayAlerts = alertMapper.selectCount(todayAlertQw).intValue();
         kpi.put("pendingAlerts", pendingAlerts);
         kpi.put("todayAlerts", todayAlerts);
 
         QueryWrapper<ShuttleEvent> eventQw = new QueryWrapper<>();
-        eventQw.ge("event_time", LocalDate.now().atStartOfDay());
+        eventQw.ge("event_time", operationClock.now().toLocalDate().atStartOfDay());
         int todayEvents = eventMapper.selectCount(eventQw).intValue();
         kpi.put("todayEvents", todayEvents);
 
@@ -128,7 +129,7 @@ public class StatsService {
 
     public Map<String, Object> waitingTrend(int hours) {
         Map<String, Object> result = new HashMap<>();
-        LocalDateTime since = LocalDateTime.now().minusHours(hours);
+        LocalDateTime since = operationClock.now().minusHours(hours);
         QueryWrapper<ShuttleEvent> qw = new QueryWrapper<>();
         qw.ge("event_time", since).orderByAsc("event_time");
         List<ShuttleEvent> events = eventMapper.selectList(qw);
@@ -176,7 +177,7 @@ public class StatsService {
     @Scheduled(cron = "0 */15 * * * *")
     public void snapshotStats() {
         log.info("Snapshot stats started");
-        LocalDate today = LocalDate.now();
+        LocalDate today = operationClock.now().toLocalDate();
         String slot = currentSlot();
         List<Line> lines = lineMapper.selectList(new QueryWrapper<Line>().eq("enabled", 1));
         List<StationQueue> queues = queueMapper.selectList(null);

@@ -66,8 +66,10 @@
     .speed-btn-row { display:flex; gap:8px; margin-top:8px; }
     .speed-btn { flex:1; height:40px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
   </style>
+  <link rel="stylesheet" href="operation.css">
 </head>
 <body class="neo-page neo-driver">
+  <section class="op" data-operation="driver" hidden></section>
 <div id="app">
   <div class="header"><a class="sf-brand" href="index.html"><span class="sf-mark" aria-hidden="true">SF</span><span>司机工作台</span></a><button class="btn" type="button" @click="logout">退出登录</button></div>
   <template v-if="!driver"><div class="section" role="status">正在载入司机工作台…</div></template>
@@ -174,8 +176,9 @@
           <button style="background:#4caf50;color:#fff;" @click="boardCount=Math.min(vehicle.capacity-vehicle.currentLoad,boardCount+1)">+</button>
         </div>
         <button class="action-btn btn-success" @click="doBoard">确认上客 {{boardCount}} 人</button>
-        <button class="action-btn btn-gray" @click="finishStep">无人上车，完成</button>
+        <button class="action-btn btn-gray" @click="step=3">无人上车，跳过</button>
       </template>
+      <button v-if="step===3" class="action-btn btn-primary" @click="doDepart">确认离站</button>
     </div>
 
     <div class="section" v-if="vehicle">
@@ -410,6 +413,10 @@ const driverApp=createApp({setup(){
     }
     async function doBoard(){
       const res=await post('/driver/board',{vehicleId:vehicle.value.id,stationId:arriveStationId.value,lineId:vehicle.value.lineId,count:boardCount.value,direction:direction.value});
+      if(res.code===200){vehicle.value=res.data;step.value=3;}
+    }
+    async function doDepart(){
+      const res=await post('/driver/depart',{vehicleId:vehicle.value.id});
       if(res.code===200){vehicle.value=res.data;finishStep();}
     }
     function finishStep(){step.value=0;arriveStationId.value='';alightCount.value=0;boardCount.value=0;}
@@ -432,10 +439,11 @@ const driverApp=createApp({setup(){
       window.addEventListener('offline',handleOffline);
     });
     onUnmounted(()=>{disposed=true;if(ws)ws.close();stopPolling();window.removeEventListener('online',handleOnline);window.removeEventListener('offline',handleOffline);});
-    return {driver,vehicle,stations,direction,step,arriveStationId,alightCount,boardCount,calibrateValue,tasks,speed,isLocked,netClass,netDotClass,netLabel,pendingCount,setSpeed,logout,syncPending,loadRate,loadColor,loadStatus,toggleRunning,doArrive,doAlight,doBoard,finishStep,doCalibrate,acceptTask,rejectTask,completeTask};
+    return {driver,vehicle,stations,direction,step,arriveStationId,alightCount,boardCount,calibrateValue,tasks,speed,isLocked,netClass,netDotClass,netLabel,pendingCount,setSpeed,logout,syncPending,loadRate,loadColor,loadStatus,toggleRunning,doArrive,doAlight,doBoard,doDepart,finishStep,doCalibrate,acceptTask,rejectTask,completeTask};
   }
 });
 window.ShuttleAuth.mountProtected(driverApp,'DRIVER');
 </script>
+<script src="operation.js" defer></script>
 </body>
 </html>

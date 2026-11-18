@@ -23,6 +23,18 @@ public class ApiRateLimitInterceptor implements HandlerInterceptor {
         this.mapper = mapper;
     }
 
+    @Value("${shuttle.operation.enabled:false}") private boolean operationEnabled;
+    @Value("${shuttle.operation.token:}") private String operationToken;
+
+    private boolean operationWorker(HttpServletRequest request) {
+        String supplied = request.getHeader("X-Operation-Token");
+        return operationEnabled && "127.0.0.1".equals(request.getRemoteAddr())
+                && operationToken.length() >= 32 && supplied != null
+                && java.security.MessageDigest.isEqual(
+                    operationToken.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    supplied.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String path = request.getRequestURI();
@@ -47,7 +59,12 @@ public class ApiRateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String key = group + ":" + clientAddress(request);
+        boolean worker = operationWorker(request);
+        String key = worker ? "operation-worker:" + group : group + ":" + clientAddress(request);
+        if (worker) {
+            limit = 4800;
+            seconds = 60;
+        }
         if (limiter.allow(key, Math.max(limit, 1), Math.max(seconds, 1) * 1000L)) return true;
         response.setStatus(429);
         response.setCharacterEncoding("UTF-8");

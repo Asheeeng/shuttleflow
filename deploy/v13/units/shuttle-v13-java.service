@@ -1,0 +1,22 @@
+[Unit]
+Description=ShuttleFlow V1.3 isolated application
+PartOf=shuttle-v13.target
+Requires=shuttle-v13-mysql.service shuttle-v13-redis.service shuttle-v13-ai.service
+After=shuttle-v13-mysql.service shuttle-v13-redis.service shuttle-v13-ai.service
+StartLimitIntervalSec=120
+StartLimitBurst=6
+
+[Service]
+User=shuttlev13
+WorkingDirectory=/opt/shuttle-v13/current
+EnvironmentFile=/etc/shuttle-v13/app.env
+ExecStartPre=/opt/shuttle-v13/current/deploy/v13/wait-dependencies.sh
+ExecStart=/usr/bin/java -Xms96m -Xmx288m -XX:MaxDirectMemorySize=96m -jar /opt/shuttle-v13/current/shuttle.jar --server.address=127.0.0.1 --server.port=18080
+Restart=on-failure
+RestartSec=4
+MemoryMax=590M
+CPUQuota=110%
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true

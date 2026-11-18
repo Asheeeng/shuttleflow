@@ -16,6 +16,7 @@ import java.util.*;
 
 @Service
 public class DispatchService {
+    @org.springframework.beans.factory.annotation.Autowired private OperationClock operationClock = new OperationClock();
     private static final Logger log = LoggerFactory.getLogger(DispatchService.class);
 
     @Autowired private StationQueueMapper queueMapper;
@@ -23,17 +24,20 @@ public class DispatchService {
     @Autowired private TaskService taskService;
     @Autowired private AlertService alertService;
     @Autowired private LineMapper lineMapper;
-    @Autowired private StationMapper stationMapper;
+    @Autowired private EtaService etaService;
 
     @Value("${shuttle.alert.yellow-threshold:8}") private int yellowThreshold;
     @Value("${shuttle.alert.orange-threshold:15}") private int orangeThreshold;
     @Value("${shuttle.alert.red-threshold:25}") private int redThreshold;
+    @Value("${shuttle.dispatch.course-preposition-enabled:true}") private boolean coursePrepositionEnabled;
 
     void onEvent(ShuttleEvent event) {
+        if (operationClock.active() && ("fixed".equals(operationClock.policy())
+                || ("cancel".equals(event.getType()) && "simulation".equals(event.getSource())))) return;
         if (event.getStationId() != null && event.getLineId() != null && event.getDirection() != null) {
             checkSurge(event.getStationId(), event.getLineId(), event.getDirection());
         }
-        if ("arrive".equals(event.getType())) {
+        if ((operationClock.active() ? "smart".equals(operationClock.policy()) : coursePrepositionEnabled) && "arrive".equals(event.getType())) {
             checkCoursePreposition();
         }
     }
@@ -45,7 +49,7 @@ public class DispatchService {
         if (q == null) return;
         int waiting = q.getWaitingCount();
 
-        if (waiting >= redThreshold) {
+        if (waiting >= redThreshold && !"threshold".equals(operationClock.policy())) {
             alertService.createAlert("red", "surge", stationId, null, lineId,
                     "站点候车" + waiting + "人，超过红色阈值" + redThreshold);
             taskService.createDispatchTask(lineId, stationId, direction, 9, "RED_SURGE",
@@ -62,22 +66,25 @@ public class DispatchService {
     }
 
     private void checkCoursePreposition() {
-        LocalTime now = LocalTime.now();
+        LocalTime now = operationClock.now().toLocalTime();
         List<CourseSchedule> courses = courseMapper.selectList(null);
         for (CourseSchedule c : courses) {
+            if (c.getWeekday() != 0 && c.getWeekday() != operationClock.now().getDayOfWeek().getValue()) continue;
             long diffMin = java.time.Duration.between(now, c.getEndTime()).toMinutes();
             if (diffMin >= 0 && diffMin <= 10) {
                 int potential = (int)(c.getStudentCount() * c.getConversionRate().doubleValue());
                 if (potential >= yellowThreshold && c.getNearbyStationId() != null) {
-                    Station s = stationMapper.selectById(c.getNearbyStationId());
                     QueryWrapper<Line> lqw = new QueryWrapper<>();
                     List<Line> lines = lineMapper.selectList(lqw.eq("enabled", 1));
                     for (Line line : lines) {
-                        taskService.createPrepositionTask(line.getId(), c.getNearbyStationId(),
-                                "go", 4, "COURSE_PRE",
-                                "课表先验:" + c.getBuilding() + " " + c.getEndTime() + "下课" +
-                                        c.getStudentCount() + "人,转化率" + c.getConversionRate() +
-                                        ",潜在" + potential + "人,建议预置运力");
+                        for (String direction : Arrays.asList("go", "back")) {
+                            if (!etaService.hasBoardingStop(line.getId(), c.getNearbyStationId(), direction)) continue;
+                            taskService.createPrepositionTask(line.getId(), c.getNearbyStationId(),
+                                    direction, 4, "COURSE_PRE",
+                                    "课表先验:" + c.getBuilding() + " " + c.getEndTime() + "下课" +
+                                            c.getStudentCount() + "人,转化率" + c.getConversionRate() +
+                                            ",潜在" + potential + "人,建议预置运力");
+                        }
                     }
                 }
             }
@@ -89,7 +96,7 @@ public class DispatchService {
         List<StationQueue> queues = queueMapper.selectList(null);
         queues.sort((a, b) -> b.getWaitingCount() - a.getWaitingCount());
         data.put("topQueues", queues.subList(0, Math.min(10, queues.size())));
-        LocalTime now = LocalTime.now();
+        LocalTime now = operationClock.now().toLocalTime();
         List<CourseSchedule> upcoming = new ArrayList<>();
         for (CourseSchedule c : courseMapper.selectList(null)) {
             long diffMin = java.time.Duration.between(now, c.getEndTime()).toMinutes();

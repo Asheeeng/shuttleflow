@@ -1,0 +1,9 @@
+[Unit]
+Description=ShuttleFlow V1.3 health check timer
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+
+[Install]
+WantedBy=timers.target

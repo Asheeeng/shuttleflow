@@ -14,7 +14,7 @@ server:
     session:
       timeout: 8h
       cookie:
-        name: SHUTTLE_SESSION
+        name: ${SHUTTLE_SESSION_COOKIE_NAME:SHUTTLE_SESSION}
         http-only: true
         same-site: lax
         secure: ${SHUTTLE_SESSION_COOKIE_SECURE:false}

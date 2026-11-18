@@ -1,0 +1,9 @@
+[Unit]
+Description=ShuttleFlow V1.3 health checks and shared SMTP alerts
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/shuttle-v13/current/deploy/v13/monitor.py
+TimeoutStartSec=40
+MemoryMax=70M

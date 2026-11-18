@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class FusionService {
+    @org.springframework.beans.factory.annotation.Autowired private OperationClock operationClock = new OperationClock();
     private static final Logger log = LoggerFactory.getLogger(FusionService.class);
 
     @Autowired private StationQueueMapper queueMapper;
@@ -33,14 +34,18 @@ public class FusionService {
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> observationUpdate(Long stationId, Long lineId, String direction,
                                                   int observedCount, double observationVariance, String source) {
-        Map<String, Object> aiResult = aiClient.kalmanFuse(stationId, lineId, direction, observedCount, observationVariance, source);
-        if (aiResult != null && aiResult.containsKey("data")) {
+        StationQueue q = queueMapper.selectForUpdate(stationId, lineId, direction);
+        int previousCount = q != null ? q.getWaitingCount() : 0;
+        Map<String, Object> aiResult = aiClient.kalmanFuse(stationId, lineId, direction,
+                observedCount, previousCount, observationVariance, source);
+        if (aiResult != null && Integer.valueOf(200).equals(asInt(aiResult.get("code")))
+                && aiResult.containsKey("data")) {
             Object data = aiResult.get("data");
-            if (data instanceof Map) {
+            if (data instanceof Map && ((Map<?, ?>) data).get("fusedCount") instanceof Number) {
                 Map<String, Object> aiData = (Map<String, Object>) data;
                 aiData.put("source", "ai_service");
                 updateQueueFromFusion(stationId, lineId, direction,
-                        ((Number) aiData.getOrDefault("fusedCount", observedCount)).intValue(),
+                        ((Number) aiData.get("fusedCount")).intValue(),
                         aiData.get("confidence") != null ? new BigDecimal(aiData.get("confidence").toString()) : null);
                 ShuttleWebSocketHandler.broadcast("kalman_fusion", aiData);
                 return aiData;
@@ -48,10 +53,6 @@ public class FusionService {
         }
 
         String key = qKey(stationId, lineId, direction);
-        QueryWrapper<StationQueue> qw = new QueryWrapper<>();
-        qw.eq("station_id", stationId).eq("line_id", lineId).eq("direction", direction);
-        StationQueue q = queueMapper.selectForUpdate(stationId, lineId, direction);
-
         double xPred = q != null ? q.getWaitingCount() : 0;
         double pPred = pMap.getOrDefault(key, 10.0) + Q;
         double R = observationVariance > 0 ? observationVariance : R_DEFAULT;
@@ -68,12 +69,12 @@ public class FusionService {
             q.setStationId(stationId); q.setLineId(lineId); q.setDirection(direction);
             q.setWaitingCount(fusedCount);
             q.setConfidence(BigDecimal.valueOf(confidence));
-            q.setLastUpdateTime(LocalDateTime.now());
+            q.setLastUpdateTime(operationClock.now());
             queueMapper.insert(q);
         } else {
             q.setWaitingCount(fusedCount);
             q.setConfidence(BigDecimal.valueOf(confidence));
-            q.setLastUpdateTime(LocalDateTime.now());
+            q.setLastUpdateTime(operationClock.now());
             queueMapper.updateById(q);
         }
 
@@ -88,6 +89,10 @@ public class FusionService {
         result.put("varianceP", String.format("%.3f", pUpdated));
         ShuttleWebSocketHandler.broadcast("kalman_fusion", result);
         return result;
+    }
+
+    private Integer asInt(Object value) {
+        return value instanceof Number ? ((Number) value).intValue() : null;
     }
 
     private void updateQueueFromFusion(Long stationId, Long lineId, String direction, int fusedCount, BigDecimal confidence) {
@@ -110,7 +115,7 @@ public class FusionService {
         if (v == null) return;
         v.setCurrentStationId(event.getStationId());
         v.setDirection(event.getDirection());
-        v.setLastReportTime(LocalDateTime.now());
+        v.setLastReportTime(operationClock.now());
         if ("standby".equals(v.getStatus()) || "offline".equals(v.getStatus())) v.setStatus("running");
         vehicleMapper.updateById(v);
         ShuttleWebSocketHandler.broadcast("vehicle_update", v);
@@ -123,8 +128,12 @@ public class FusionService {
         int nextLoad = event.getAfterLoad() != null ? event.getAfterLoad() : v.getCurrentLoad() - count;
         if (nextLoad < 0 || nextLoad > v.getCapacity())
             throw new IllegalStateException("下客后人数超出车辆容量范围");
+        String trip = operationClock.trip(v.getId());
+        if (trip != null && count > 0) {
+            requestMapper.alightForTrip(trip, event.getStationId(), operationClock.now(), count);
+        }
         v.setCurrentLoad(nextLoad);
-        v.setLastReportTime(LocalDateTime.now());
+        v.setLastReportTime(operationClock.now());
         vehicleMapper.updateById(v);
         ShuttleWebSocketHandler.broadcast("vehicle_update", v);
     }
@@ -137,11 +146,19 @@ public class FusionService {
         if (count < 0 || newLoad < v.getCurrentLoad() || newLoad > v.getCapacity())
             throw new IllegalStateException("上客后人数超出车辆容量范围");
         v.setCurrentLoad(newLoad);
-        v.setLastReportTime(LocalDateTime.now());
+        v.setLastReportTime(operationClock.now());
         vehicleMapper.updateById(v);
         if (event.getStationId() != null && event.getLineId() != null) {
             updateQueue(event.getStationId(), event.getLineId(), event.getDirection(), -count, event.getConfidence());
-            if (count > 0) requestMapper.markBoardedAtStation(event.getStationId(), event.getLineId(), event.getDirection(), count);
+            if (count > 0) {
+                String trip = operationClock.trip(v.getId());
+                if (trip == null) {
+                    requestMapper.markBoardedAtStation(event.getStationId(), event.getLineId(), event.getDirection(), count);
+                } else if (requestMapper.boardForTrip(event.getStationId(), event.getLineId(), event.getDirection(),
+                        v.getId(), trip, operationClock.now(), count) != count) {
+                    throw new IllegalStateException("候车记录已变化，请重新确认上客人数");
+                }
+            }
             ShuttleWebSocketHandler.broadcast("queue_update",
                     getQueueSnapshot(event.getStationId(), event.getLineId(), event.getDirection()));
         }
@@ -151,7 +168,7 @@ public class FusionService {
     void onDepart(ShuttleEvent event) {
         Vehicle v = vehicleMapper.selectForUpdate(event.getVehicleId());
         if (v == null) return;
-        v.setLastReportTime(LocalDateTime.now());
+        v.setLastReportTime(operationClock.now());
         vehicleMapper.updateById(v);
         ShuttleWebSocketHandler.broadcast("vehicle_update", v);
     }
@@ -164,7 +181,7 @@ public class FusionService {
                 throw new IllegalStateException("校准人数超出车辆核定容量");
             v.setCurrentLoad(event.getAfterLoad());
         }
-        v.setLastReportTime(LocalDateTime.now());
+        v.setLastReportTime(operationClock.now());
         vehicleMapper.updateById(v);
         ShuttleWebSocketHandler.broadcast("vehicle_update", v);
     }

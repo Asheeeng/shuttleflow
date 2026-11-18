@@ -39,6 +39,7 @@ class Observation(BaseModel):
     line_id: int
     direction: str = "go"
     observed_count: int
+    prior_count: int = 0
     variance: float = 4.0
     source: str = "camera"
 
@@ -90,16 +91,25 @@ def cusum_status():
 def assign(req: AssignRequest):
     vehicles = []
     try:
-        r = requests.get(f"{BACKEND}/admin/station-vehicles?stationId={req.station_id}", headers=SERVICE_HEADERS, timeout=3)
-        if r.status_code == 200:
-            vehicles = r.json().get("data", [])
-    except: pass
+        r = requests.get(f"{BACKEND}/admin/station-vehicles", params={
+            "stationId": req.station_id, "lineId": req.line_id, "direction": req.direction
+        }, headers=SERVICE_HEADERS, timeout=3)
+        if r.status_code != 200:
+            return JSONResponse(status_code=503, content={"code":503,"msg":"无法读取对应线路与方向的可用车辆"})
+        payload = r.json()
+        if payload.get("code") != 200 or not isinstance(payload.get("data"), list):
+            return JSONResponse(status_code=503, content={"code":503,"msg":"车辆响应格式无效"})
+        vehicles = [v for v in payload["data"]
+                    if int(v.get("lineId", -1)) == req.line_id and v.get("direction") == req.direction]
+    except Exception:
+        return JSONResponse(status_code=503, content={"code":503,"msg":"无法读取线路车辆状态"})
     result = allocator.assign(vehicles, req.waiting, req.station_id, req.line_id, req.direction)
     return {"code": 200, "data": result}
 
 @app.post("/kalman")
 def kalman_fuse(obs: Observation):
-    result = kalman.fuse(obs.station_id, obs.line_id, obs.direction, obs.observed_count, obs.variance, obs.source)
+    result = kalman.fuse(obs.station_id, obs.line_id, obs.direction, obs.observed_count,
+                         obs.prior_count, obs.variance, obs.source)
     return {"code": 200, "data": result}
 
 @app.get("/eta")

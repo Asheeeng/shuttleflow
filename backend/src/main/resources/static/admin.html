@@ -55,8 +55,10 @@
     .task-escalated { border-left:4px solid #f44336; }
     select,input { border:1px solid #ddd; border-radius:6px; padding:6px 10px; font-size:14px; }
   </style>
+  <link rel="stylesheet" href="operation.css">
 </head>
 <body class="neo-page neo-admin">
+  <section class="op" data-operation="admin" hidden></section>
 <div id="app">
   <div class="header">
     <h1><a class="sf-brand" href="index.html"><span class="sf-mark" aria-hidden="true">SF</span><span>ShuttleFlow · 调度控制台</span></a></h1>
@@ -443,5 +445,6 @@ const adminApp=createApp({
 });
 window.ShuttleAuth.mountProtected(adminApp,'ADMIN');
 </script>
+<script src="operation.js" defer></script>
 </body>
 </html>

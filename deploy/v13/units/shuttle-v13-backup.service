@@ -1,0 +1,11 @@
+[Unit]
+Description=ShuttleFlow V1.3 database backup
+Requires=shuttle-v13-mysql.service
+After=shuttle-v13-mysql.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/shuttle-v13/current/deploy/v13/backup.sh
+Nice=10
+CPUQuota=45%
+MemoryMax=160M

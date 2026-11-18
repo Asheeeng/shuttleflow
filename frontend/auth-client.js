@@ -29,11 +29,11 @@
     return session;
   }
 
-  async function mountProtected(app, role) {
+  async function mountProtected(app, role, requestedPage) {
     try {
       const session = await readSession(false);
-      if (!session.authenticated || !session.user || session.user.role !== role) {
-        const next = role === 'ADMIN' ? 'admin.html' : 'driver.html';
+      if (!session.authenticated || !session.user || session.user.role !== role && !(role === 'ADMIN' && session.user.role === 'DISPATCHER')) {
+        const next = requestedPage || (role === 'ADMIN' ? 'admin.html' : 'driver.html');
         window.location.replace('login.html?role=' + (role === 'ADMIN' ? 'admin' : 'driver') + '&next=' + encodeURIComponent(next));
         return;
       }

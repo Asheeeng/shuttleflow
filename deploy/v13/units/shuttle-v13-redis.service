@@ -1,0 +1,16 @@
+[Unit]
+Description=ShuttleFlow V1.3 private Redis instance
+PartOf=shuttle-v13.target
+StopWhenUnneeded=yes
+
+[Service]
+User=shuttlev13
+ExecStart=/usr/bin/redis-server /etc/shuttle-v13/redis.conf --daemonize no
+Restart=on-failure
+MemoryMax=110M
+CPUQuota=35%
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/shuttle-v13-redis

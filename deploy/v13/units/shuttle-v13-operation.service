@@ -1,0 +1,22 @@
+[Unit]
+Description=ShuttleFlow V1.3 simulation worker
+PartOf=shuttle-v13.target
+Requires=shuttle-v13-java.service
+After=shuttle-v13-java.service
+
+[Service]
+User=shuttlev13
+WorkingDirectory=/opt/shuttle-v13/current
+EnvironmentFile=/etc/shuttle-v13/app.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/shuttle-v13/venv/bin/python -m simulation.operation_server
+Restart=on-failure
+TimeoutStopSec=28
+MemoryMax=180M
+TasksMax=48
+CPUQuota=60%
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/shuttle-v13

@@ -1,0 +1,16 @@
+[Unit]
+Description=ShuttleFlow V1.3 private MySQL instance
+PartOf=shuttle-v13.target
+StopWhenUnneeded=yes
+
+[Service]
+User=shuttlev13db
+ExecStart=/usr/sbin/mysqld --no-defaults --datadir=/var/lib/shuttle-v13-mysql --socket=/var/lib/shuttle-v13-mysql/mysql.sock --pid-file=/var/lib/shuttle-v13-mysql/mysql.pid --port=3308 --bind-address=127.0.0.1 --mysqlx=OFF --skip-log-bin --innodb-buffer-pool-size=128M --performance-schema=OFF --max-connections=24 --require-secure-transport=ON
+Restart=on-failure
+MemoryMax=512M
+CPUQuota=75%
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/shuttle-v13-mysql

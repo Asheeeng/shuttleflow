@@ -7,18 +7,23 @@ class KalmanFusion:
         self.R_default = R_default
         self.P = defaultdict(lambda: 10.0)
 
-    def fuse(self, station_id, line_id, direction, observed_count, variance, source):
+    def fuse(self, station_id, line_id, direction, observed_count, prior_count, variance, source):
         key = f"{station_id}_{line_id}_{direction}"
+        if observed_count < 0 or prior_count < 0:
+            raise ValueError("观测和先验候车人数不能为负数")
         P_pred = self.P[key] + self.Q
         R = variance if variance > 0 else self.R_default
         K = P_pred / (P_pred + R)
         P_updated = (1 - K) * P_pred
         self.P[key] = P_updated
+        fused_count = max(0, int(round(prior_count + K * (observed_count - prior_count))))
         confidence = 1.0 / (1.0 + P_updated)
         return {
             "key": key,
             "source": source,
+            "previousEstimate": prior_count,
             "observedCount": observed_count,
+            "fusedCount": fused_count,
             "kalmanGain": round(K, 4),
             "confidence": round(confidence, 4),
             "varianceP": round(P_updated, 4),

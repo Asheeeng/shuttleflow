@@ -20,6 +20,9 @@ __pycache__/
 *.pyc
 ai-service/venv/
 ai-service/.venv/
+simulation/.venv/
+simulation/browser-tests/node_modules/
+simulation/browser-tests/test-results/
 
 # OS
 Thumbs.db
@@ -37,3 +40,9 @@ Thumbs.db
 # 本机浏览器部署验证产物
 .playwright-cli/
 output/playwright/
+
+# Web operations acceptance artifacts
+output/operation-v13/
+
+# 本机仿真归档和诊断输出
+simulation/results/

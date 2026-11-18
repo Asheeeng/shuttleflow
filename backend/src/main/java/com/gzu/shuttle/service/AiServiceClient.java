@@ -54,6 +54,11 @@ public class AiServiceClient {
 
     public Map<String, Object> kalmanFuse(Long stationId, Long lineId, String direction,
                                            int observedCount, double variance, String source) {
+        return kalmanFuse(stationId, lineId, direction, observedCount, 0, variance, source);
+    }
+
+    public Map<String, Object> kalmanFuse(Long stationId, Long lineId, String direction,
+                                           int observedCount, int priorCount, double variance, String source) {
         if (!available) return null;
         try {
             Map<String, Object> body = new HashMap<>();
@@ -61,6 +66,7 @@ public class AiServiceClient {
             body.put("line_id", lineId);
             body.put("direction", direction);
             body.put("observed_count", observedCount);
+            body.put("prior_count", priorCount);
             body.put("variance", variance);
             body.put("source", source);
             String resp = post(serviceUrl + "/kalman", body);

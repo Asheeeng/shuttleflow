@@ -19,14 +19,27 @@ public class EtaService {
 
     @Value("${shuttle.eta.buffer-sec:60}") private int bufferSec;
 
+    public boolean hasBoardingStop(Long lineId, Long stationId, String direction) {
+        List<LineStation> route = lsMapper.selectList(new QueryWrapper<LineStation>()
+                .eq("line_id", lineId).eq("direction", direction).orderByAsc("seq"));
+        return route.stream().limit(Math.max(0, route.size() - 1)).anyMatch(stop -> stationId.equals(stop.getStationId()));
+    }
+
     public int estimateTravelSec(Long fromStationId, Long toStationId, Long lineId) {
+        return estimateTravelSec(fromStationId, toStationId, lineId, null);
+    }
+
+    public int estimateTravelSec(Long fromStationId, Long toStationId, Long lineId, String direction) {
+        if (fromStationId == null || toStationId == null || lineId == null) return 600;
         if (fromStationId.equals(toStationId)) return 0;
         QueryWrapper<LineStation> qw1 = new QueryWrapper<>();
         qw1.eq("line_id", lineId).eq("station_id", fromStationId);
+        if (direction != null) qw1.eq("direction", direction);
         List<LineStation> fromList = lsMapper.selectList(qw1);
         LineStation from = fromList.isEmpty() ? null : fromList.get(0);
         QueryWrapper<LineStation> qw2 = new QueryWrapper<>();
         qw2.eq("line_id", lineId).eq("station_id", toStationId);
+        if (direction != null) qw2.eq("direction", direction);
         List<LineStation> toList = lsMapper.selectList(qw2);
         LineStation to = toList.isEmpty() ? null : toList.get(0);
         if (from == null || to == null) return 600;

@@ -1,0 +1,18 @@
+[Unit]
+Description=ShuttleFlow V1.3 private FastAPI
+PartOf=shuttle-v13.target
+StopWhenUnneeded=yes
+
+[Service]
+User=shuttlev13
+WorkingDirectory=/opt/shuttle-v13/current/ai-service
+EnvironmentFile=/etc/shuttle-v13/app.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/shuttle-v13/venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 18000 --workers 1
+Restart=on-failure
+MemoryMax=300M
+CPUQuota=60%
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true

@@ -58,6 +58,7 @@ public class ShuttleWebSocketHandler extends TextWebSocketHandler {
     private static boolean canReceive(WebSocketSession session, String type, JSONObject payload) {
         Object roleValue = session.getAttributes().get("shuttleRole");
         String role = roleValue == null ? "" : roleValue.toString();
+        if ("simulation_change".equals(type)) return !role.isEmpty();
         if ("ADMIN".equals(role) || "DISPATCHER".equals(role)) return true;
         if ("GUEST".equals(role) || "PASSENGER".equals(role)) return "queue_update".equals(type);
         if (!"DRIVER".equals(role)) return false;
