@@ -1,5 +1,20 @@
 # 校园摆渡车站点客流上报与AI智能动态调度系统
 
+## 中期检查版本
+
+本次稳定版本对应标签 `v1.3.0-midterm`。中期检查涵盖乘客、司机、管理台、智能调度和运营仿真。代码托管在 [GitHub](https://github.com/Asheeeng/shuttleflow) 和 [GitCode](https://gitcode.com/susuis/shuttleflow)；同步记录、回归结果和已知边界见 [中期检查进度说明](docs/中期检查进度说明.md)。
+
+GitHub 保留以下版本与归档分支。双仓库的中期版本以主线 SHA 和标签核对。
+
+| 分支 | 用途 |
+| --- | --- |
+| `main` | V1.3 中期稳定代码 |
+| `release/v1.3.0-midterm` | 双仓库验收与同步 |
+| `codex/v1.3-operation-simulation` | V1.3 功能与运维演进记录 |
+| `codex/v1.2-hardening-passenger-auth` | V1.2 安全加固版本 |
+| `archive/v1.1-main-before-v1.3-midterm-2026-11-23` | GitHub 原 V1.1 主线快照 |
+| `archive/v0.2-2026-11-16` | V0.2 历史版本 |
+
 ## 项目简介
 面向贵州大学校内固定线路/固定站点的校园摆渡车，构建打通"感知—预测—决策—执行"闭环的Web原型系统。
 MVP闭环：扫码签到 → 司机上报 → 队列融合(守恒) → 规则调度 → 任务派发(评分顺延) → 到站/上下客 → 评估
@@ -7,12 +22,12 @@ MVP闭环：扫码签到 → 司机上报 → 队列融合(守恒) → 规则调
 ## 技术栈
 - 后端：Spring Boot 2.7.18 + MyBatis-Plus 3.5.5 + MySQL 8.0 + Redis + WebSocket
 - 前端：本地 Vue 3.5.45 全局构建 + 原生HTML/CSS/JS，无需Node构建
-- AI服务：规则调度（MVP），后续迭代接入LightGBM/TCN/CUSUM/OR-Tools
+- AI服务：Java 规则调度与 CUSUM，独立 FastAPI 提供预测、融合和多车建议。OR-Tools 可选
 
 ## 线路站点数据
 - 1号线：双馨园食堂 ↔ 西校区三食堂（去向9站/回向13站）
 - 2号线：双馨园食堂 ↔ 西校区校内交通车站（去向9站/回向13站）
-- 3号线：双馨园食堂 ↔ 西校区三食堂（去向10站/回向13站）
+- 3号线：双馨园食堂 ↔ 西校区三食堂（去向10站/回向14站）
 - 车辆：1~4号车→1号线，5~8号车→2号线，9~12号车→3号线
 - 容量：每车除司机可坐13人
 - 班次：7:00-22:00，平峰15分钟/班，高峰(8-9,12-13,17-18)5分钟/班
@@ -27,6 +42,8 @@ sudo mysql -e "CREATE DATABASE shuttle_db CHARACTER SET utf8mb4 COLLATE utf8mb4_
 sudo mysql shuttle_db < backend/src/main/resources/sql/init.sql
 ```
 第二行只适用于新建空库；已有业务库必须先备份并执行可审查迁移。
+
+V1.3 的升级 SQL 位于 `backend/src/main/resources/db/migration/`。V1.2 库在备份并确认实际表结构后，依次审查任务方向和行程关联两个脚本。本机已按 V1.3 初始化的空库已包含这些字段。仿真使用独立测试库和回环服务，启动方法见 [仿真操作手册](simulation/README.md)。
 
 ### 2. 配置服务端环境变量
 生产部署参考 [`deploy/.env.production.example`](deploy/.env.production.example) 和 [Debian 12 部署手册](docs/deploy/debian12.md)。本机开发可用 `shuttle_app` 最小权限账号；请通过安全环境变量提供 `SHUTTLE_DB_PASSWORD`、`SHUTTLE_AI_SERVICE_TOKEN`。Redis可选，生产环境应设置认证并只监听本机。
