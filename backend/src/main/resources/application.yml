@@ -68,7 +68,8 @@ shuttle:
     username: ${SHUTTLE_BOOTSTRAP_ADMIN_USERNAME:}
     password: ${SHUTTLE_BOOTSTRAP_ADMIN_PASSWORD:}
   rate-limit:
-    auth-per-window: ${SHUTTLE_RATE_LIMIT_AUTH:10}
+    login-per-window: ${SHUTTLE_RATE_LIMIT_LOGIN:${SHUTTLE_RATE_LIMIT_AUTH:30}}
+    register-per-window: ${SHUTTLE_RATE_LIMIT_REGISTER:20}
     auth-window-seconds: ${SHUTTLE_RATE_LIMIT_AUTH_WINDOW_SECONDS:900}
     passenger-writes-per-window: ${SHUTTLE_RATE_LIMIT_PASSENGER:20}
     write-window-seconds: ${SHUTTLE_RATE_LIMIT_WRITE_WINDOW_SECONDS:60}

@@ -55,7 +55,7 @@ def control(body):
         with RUN.cv:
             if action == "pause" and RUN.phase == "running":
                 RUN.phase = "paused"
-                RUN.snapshot = {**RUN.snapshot, "phase": "paused"}
+                RUN.snapshot = {**RUN.snapshot, "phase": "paused", "second": RUN.now}
             elif action == "resume" and RUN.phase == "paused":
                 RUN.phase = "running"
                 RUN.snapshot = {**RUN.snapshot, "phase": "running"}

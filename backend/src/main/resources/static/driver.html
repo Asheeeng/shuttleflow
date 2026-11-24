@@ -389,7 +389,7 @@ const driverApp=createApp({setup(){
         try{
           const res=await get('/driver/tasks/'+vehicle.value.id);
           if(res.code===200)tasks.value=res.data;
-          const vres=await get('/vehicle/'+vehicle.value.id);
+          const vres=await get('/driver/vehicle/'+vehicle.value.id);
           if(vres.code===200){vehicle.value=vres.data;calibrateValue.value=vres.data.currentLoad;}
         }catch(e){netStatus.value='offline';}
       },5000);

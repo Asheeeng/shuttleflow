@@ -13,7 +13,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class ApiRateLimitInterceptor implements HandlerInterceptor {
     private final FixedWindowRateLimiter limiter;
     private final ObjectMapper mapper;
-    @Value("${shuttle.rate-limit.auth-per-window:10}") private int authLimit;
+    @Value("${shuttle.rate-limit.login-per-window:30}") private int loginLimit;
+    @Value("${shuttle.rate-limit.register-per-window:20}") private int registerLimit;
     @Value("${shuttle.rate-limit.auth-window-seconds:900}") private int authWindowSeconds;
     @Value("${shuttle.rate-limit.passenger-writes-per-window:20}") private int passengerWriteLimit;
     @Value("${shuttle.rate-limit.write-window-seconds:60}") private int writeWindowSeconds;
@@ -38,13 +39,18 @@ public class ApiRateLimitInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String path = request.getRequestURI();
+        if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
         String method = request.getMethod();
         String group;
         int limit;
         int seconds;
-        if (path.matches("/api/(driver|admin|passenger)/(login|register)")) {
-            group = "auth";
-            limit = path.endsWith("/register") ? Math.max(3, authLimit / 2) : authLimit;
+        if ("POST".equalsIgnoreCase(method) && path.matches("/api/(driver|admin|passenger)/login")) {
+            group = "login";
+            limit = loginLimit;
+            seconds = authWindowSeconds;
+        } else if ("POST".equalsIgnoreCase(method) && "/api/passenger/register".equals(path)) {
+            group = "register";
+            limit = registerLimit;
             seconds = authWindowSeconds;
         } else if ("POST".equalsIgnoreCase(method) && path.startsWith("/api/passenger/")) {
             group = "passenger-write";

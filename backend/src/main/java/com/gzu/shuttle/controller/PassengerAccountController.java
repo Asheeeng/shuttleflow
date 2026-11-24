@@ -5,6 +5,8 @@ import com.gzu.shuttle.common.Result;
 import com.gzu.shuttle.entity.Passenger;
 import com.gzu.shuttle.mapper.PassengerMapper;
 import com.gzu.shuttle.service.AuthSessionService;
+import com.gzu.shuttle.service.LoginFailureThrottle;
+import javax.servlet.http.HttpServletResponse;
 import com.gzu.shuttle.service.PasswordHashService;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -25,12 +27,14 @@ public class PassengerAccountController {
     private final PassengerMapper passengers;
     private final AuthSessionService sessions;
     private final PasswordHashService passwordHashes;
+    private final LoginFailureThrottle loginFailures;
 
     public PassengerAccountController(PassengerMapper passengers, AuthSessionService sessions,
-                                      PasswordHashService passwordHashes) {
+                                      PasswordHashService passwordHashes, LoginFailureThrottle loginFailures) {
         this.passengers = passengers;
         this.sessions = sessions;
         this.passwordHashes = passwordHashes;
+        this.loginFailures = loginFailures;
     }
 
     @PostMapping("/register")
@@ -65,20 +69,20 @@ public class PassengerAccountController {
 
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody Map<String, String> body,
-                                              HttpServletRequest request) {
+                                              HttpServletRequest request, HttpServletResponse response) {
         String phone = normalizePhone(body.get("phone"));
         String password = body.get("password");
-        Passenger passenger = null;
-        if (phone != null && phone.matches("^\\+?[0-9]{7,18}$")) {
-            QueryWrapper<Passenger> query = new QueryWrapper<Passenger>();
-            query.eq("phone", phone);
-            passenger = passengers.selectOne(query);
-        }
-        if (passenger == null || password == null || password.length() > 128
-                || passenger.getPasswordHash() == null
-                || !passwordHashes.matches(password, passenger.getPasswordHash())) {
-            return Result.fail(401, "手机号或密码错误");
-        }
+        boolean validPhone = phone != null && phone.matches("^\\+?[0-9]{7,18}$");
+        Passenger passenger;
+        try {
+            passenger = loginFailures.verify("passenger", validPhone ? phone : "", () -> {
+                if (!validPhone || password == null || password.length() > 128) return null;
+                Passenger candidate = passengers.selectOne(new QueryWrapper<Passenger>().eq("phone", phone));
+                return candidate != null && candidate.getPasswordHash() != null
+                        && passwordHashes.matches(password, candidate.getPasswordHash()) ? candidate : null;
+            });
+        } catch (LoginFailureThrottle.Limited limited) { return limited.respond(response); }
+        if (passenger == null) return Result.fail(401, "手机号或密码错误");
         return Result.ok(authResult(request, passenger));
     }
 

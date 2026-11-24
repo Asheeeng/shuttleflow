@@ -7,12 +7,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.socket.CloseStatus;
+import javax.servlet.http.HttpSession;
+import com.gzu.shuttle.service.AuthSessionService;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+@Component
 public class ShuttleWebSocketHandler extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(ShuttleWebSocketHandler.class);
     public static final Map<String, WebSocketSession> SESSIONS = new ConcurrentHashMap<String, WebSocketSession>();
@@ -42,17 +47,41 @@ public class ShuttleWebSocketHandler extends TextWebSocketHandler {
         message.put("timestamp", System.currentTimeMillis());
         TextMessage frame = new TextMessage(message.toJSONString());
         for (WebSocketSession session : SESSIONS.values()) {
-            if (!session.isOpen()) {
-                SESSIONS.remove(session.getId(), session);
-                continue;
-            }
-            if (!canReceive(session, type, payload)) continue;
+            if (canReceive(session, type, payload)) send(session, frame);
+        }
+    }
+
+    @Scheduled(fixedDelay = 25000, initialDelay = 25000)
+    void heartbeat() {
+        for (WebSocketSession session : SESSIONS.values()) send(session, new PingMessage());
+    }
+
+    private static void send(WebSocketSession session, org.springframework.web.socket.WebSocketMessage<?> frame) {
+        synchronized (session) {
             try {
-                synchronized (session) { if (session.isOpen()) session.sendMessage(frame); }
+                if (!session.isOpen()) {
+                    SESSIONS.remove(session.getId(), session);
+                } else if (!authenticated(session)) {
+                    SESSIONS.remove(session.getId(), session);
+                    session.close(CloseStatus.POLICY_VIOLATION.withReason("会话已失效"));
+                } else {
+                    session.sendMessage(frame);
+                }
             } catch (IOException | IllegalStateException error) {
-                log.warn("WebSocket消息推送失败：{}", session.getId());
+                SESSIONS.remove(session.getId(), session);
+                try { session.close(CloseStatus.SERVER_ERROR); } catch (IOException | IllegalStateException ignored) { }
+                log.warn("WebSocket发送失败：{}", session.getId());
             }
         }
+    }
+
+    private static boolean authenticated(WebSocketSession ws) {
+        HttpSession http = (HttpSession) ws.getAttributes().get("shuttleHttpSession");
+        try {
+            return http != null && http.getId().equals(ws.getAttributes().get("shuttleHttpSessionId"))
+                    && java.util.Objects.equals(http.getAttribute(AuthSessionService.ROLE), ws.getAttributes().get("shuttleRole"))
+                    && java.util.Objects.equals(http.getAttribute(AuthSessionService.ID), ws.getAttributes().get("shuttleUserId"));
+        } catch (IllegalStateException expired) { return false; }
     }
 
     private static boolean canReceive(WebSocketSession session, String type, JSONObject payload) {

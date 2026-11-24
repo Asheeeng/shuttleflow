@@ -99,6 +99,8 @@
       let busy = false;
 
       function setRole(value) {
+        if (busy) return;
+        registerToggle.textContent = '注册乘客账号';
         role = value;
         passengerTab.setAttribute('aria-pressed', String(role === 'passenger'));
         driverTab.setAttribute('aria-pressed', String(role === 'driver'));
@@ -128,6 +130,16 @@
         event.currentTarget.title = visible ? '隐藏密码' : '显示密码';
       });
 
+      async function authResult(response, action) {
+        const result = await response.json().catch(() => ({}));
+        if (response.ok && result.code === 200) return result;
+        if (response.status === 429 || result.code === 429) throw new Error(result.msg || '操作过于频繁，请稍后再试。');
+        if (action === '注册' && (response.status === 401 || response.status === 403)) {
+          throw new Error('注册会话未生效或已过期。请允许本站 Cookie，并刷新页面后再试。');
+        }
+        throw new Error(result.msg || `${action}失败，请稍后重试。`);
+      }
+
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (busy) return;
@@ -139,8 +151,7 @@
           const endpoint = role === 'passenger' ? '/passenger/login' : (role === 'driver' ? '/driver/login' : '/admin/login');
           const body = role === 'admin' ? {username:identity.value.trim(),password:password.value} : {phone:identity.value.trim(),password:password.value};
           const response = await fetch((window.BACKEND_URL || location.origin) + '/api' + endpoint, {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-          const result = await response.json();
-          if (!response.ok || result.code !== 200) throw new Error(result.msg || '登录失败，请检查账号和密码。');
+          const result = await authResult(response, '登录');
           window.SHUTTLE_CSRF = result.data.csrfToken || '';
           notice.className = 'sf-notice success'; notice.textContent = '登录成功，正在进入工作台…';
           const defaultNext = role === 'passenger' ? 'passenger.html' : (role === 'admin' ? 'admin.html' : 'driver.html');
@@ -150,9 +161,10 @@
         finally { busy = false; button.disabled = false; button.textContent = '登录工作台'; }
       });
 
-      registerToggle.addEventListener('click', async () => {
+      registerToggle.addEventListener('click', () => {
+        if (busy) return;
         registerForm.hidden = !registerForm.hidden; form.hidden = !registerForm.hidden;
-        registerToggle.textContent = registerForm.hidden ? '注册新司机' : '返回登录';
+        registerToggle.textContent = registerForm.hidden ? '注册乘客账号' : '返回登录';
         document.getElementById('register-notice').textContent = '';
         if (!registerForm.hidden) {
           document.getElementById('passenger-name').focus();
@@ -161,26 +173,30 @@
 
       registerForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (busy) return;
         const msg = document.getElementById('register-notice');
+        msg.className = 'sf-notice';
         const name = document.getElementById('passenger-name').value.trim();
         const phone = document.getElementById('passenger-phone').value.trim();
         const secret = document.getElementById('passenger-password').value;
         if (!name || !phone || secret.length < 8) { msg.textContent = '请填写姓名、手机号，并设置至少 8 位密码。'; return; }
+        busy = true;
         const button = document.getElementById('register-button'); button.disabled = true; button.textContent = '正在创建…'; msg.textContent = '';
         try {
           const session = await window.ShuttleAuth.readSession(true);
-          const response = await fetch((window.BACKEND_URL || location.origin) + '/api/passenger/register', {method:'POST',credentials:'same-origin',headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify({name,phone,password:secret})});
-          const result = await response.json();
-          if (!response.ok || result.code !== 200) throw new Error(result.msg || '注册失败');
+          if (session.authenticated && session.user && !session.user.guest) throw new Error('请退出当前账号后再注册。');
+          if (!session.user || !session.user.guest || !session.csrfToken) throw new Error('无法建立注册会话，请允许本站 Cookie 后刷新页面。');
+          const response = await fetch((window.BACKEND_URL || location.origin) + '/api/passenger/register', {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Shuttle-CSRF':session.csrfToken},body:JSON.stringify({name,phone,password:secret})});
+          const result = await authResult(response, '注册');
           window.SHUTTLE_CSRF = result.data.csrfToken || session.csrfToken;
           msg.className = 'sf-notice success'; msg.textContent = '乘客账号已创建，正在进入乘客端…';
           location.replace('passenger.html');
         } catch (error) { msg.textContent = error.message || '注册失败，请重试。'; }
-        finally { button.disabled = false; button.textContent = '创建乘客账号'; }
+        finally { busy = false; button.disabled = false; button.textContent = '创建乘客账号'; }
       });
 
       window.ShuttleAuth.readSession(false).then(session => {
-        if (session.authenticated && session.user) {
+        if (!busy && registerForm.hidden && session.authenticated && session.user) {
           const allowed = role === 'admin' ? ['ADMIN','DISPATCHER'].includes(session.user.role)
             : role === 'driver' ? session.user.role === 'DRIVER' : session.user.role === 'PASSENGER' && !session.user.guest;
           const target = role === 'admin' && requestedNext === 'simulation.html' ? 'simulation.html'

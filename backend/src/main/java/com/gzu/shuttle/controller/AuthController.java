@@ -10,6 +10,7 @@ import com.gzu.shuttle.service.AuthSessionService;
 import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,8 +29,9 @@ public class AuthController {
     }
 
     @GetMapping("/session")
-    public Result<Map<String, Object>> session(HttpServletRequest request,
+    public Result<Map<String, Object>> session(HttpServletRequest request, HttpServletResponse response,
                                                @RequestParam(defaultValue = "false") boolean guest) {
+        response.setHeader("Cache-Control", "no-store");
         Map<String, Object> result = sessions.session(request, guest);
         Object userObj = result.get("user");
         if (userObj instanceof Map) {

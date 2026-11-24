@@ -5,6 +5,8 @@ import com.gzu.shuttle.common.Result;
 import com.gzu.shuttle.entity.*;
 import com.gzu.shuttle.mapper.*;
 import com.gzu.shuttle.service.AuthSessionService;
+import com.gzu.shuttle.service.LoginFailureThrottle;
+import javax.servlet.http.HttpServletResponse;
 import com.gzu.shuttle.service.PasswordHashService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +17,7 @@ import java.util.*;
 @RequestMapping("/api")
 public class CommonController {
     @Autowired private PasswordHashService passwordHashes;
+    @Autowired private LoginFailureThrottle loginFailures;
     @Autowired private AuthSessionService authSessions;
     @Autowired private LineMapper lineMapper;
     @Autowired private StationMapper stationMapper;
@@ -67,13 +70,20 @@ public class CommonController {
     }
 
     @PostMapping("/driver/login")
-    public Result<Map<String, Object>> driverLogin(@RequestBody Map<String, String> body, javax.servlet.http.HttpServletRequest request) {
-        String phone = body.get("phone");
+    public Result<Map<String, Object>> driverLogin(@RequestBody Map<String, String> body, javax.servlet.http.HttpServletRequest request, HttpServletResponse response) {
+        String input = body.get("phone");
+        String phone = input == null ? "" : input.replaceAll("[\\s-]", "").trim();
         String supplied = body.get("password");
-        QueryWrapper<Driver> qw = new QueryWrapper<Driver>();
-        qw.eq("phone", phone).eq("enabled", 1);
-        Driver d = driverMapper.selectOne(qw);
-        if (d == null || supplied == null || d.getPasswordHash() == null || !passwordHashes.matches(supplied, d.getPasswordHash()))
+        Driver d;
+        try {
+            d = loginFailures.verify("driver", phone.length() <= 32 ? phone : "", () -> {
+                if (phone.isEmpty() || phone.length() > 32 || supplied == null || supplied.length() > 128) return null;
+                Driver candidate = driverMapper.selectOne(new QueryWrapper<Driver>().eq("phone", phone).eq("enabled", 1));
+                return candidate != null && candidate.getPasswordHash() != null
+                        && passwordHashes.matches(supplied, candidate.getPasswordHash()) ? candidate : null;
+            });
+        } catch (LoginFailureThrottle.Limited limited) { return limited.respond(response); }
+        if (d == null)
             return Result.fail(401, "手机号或密码错误");
         if (d.getDefaultVehicleId() == null || vehicleMapper.selectById(d.getDefaultVehicleId()) == null)
             return Result.fail(403, "该司机账号尚未由管理员绑定车辆");
@@ -93,12 +103,19 @@ public class CommonController {
     }
 
     @PostMapping("/admin/login")
-    public Result<Map<String, Object>> adminLogin(@RequestBody Map<String, String> body, javax.servlet.http.HttpServletRequest request) {
-        QueryWrapper<Admin> qw = new QueryWrapper<Admin>();
-        qw.eq("username", body.get("username"));
-        Admin a = adminMapper.selectOne(qw);
+    public Result<Map<String, Object>> adminLogin(@RequestBody Map<String, String> body, javax.servlet.http.HttpServletRequest request, HttpServletResponse response) {
+        String username = body.get("username") == null ? "" : body.get("username").trim();
         String supplied = body.get("password");
-        if (a == null || supplied == null || a.getPasswordHash() == null || !passwordHashes.matches(supplied, a.getPasswordHash()))
+        Admin a;
+        try {
+            a = loginFailures.verify("admin", username.length() <= 60 ? username : "", () -> {
+                if (username.isEmpty() || username.length() > 60 || supplied == null || supplied.length() > 128) return null;
+                Admin candidate = adminMapper.selectOne(new QueryWrapper<Admin>().eq("username", username));
+                return candidate != null && candidate.getPasswordHash() != null
+                        && passwordHashes.matches(supplied, candidate.getPasswordHash()) ? candidate : null;
+            });
+        } catch (LoginFailureThrottle.Limited limited) { return limited.respond(response); }
+        if (a == null)
             return Result.fail(401, "用户名或密码错误");
         String role;
         if ("admin".equalsIgnoreCase(a.getRole())) role = "ADMIN";

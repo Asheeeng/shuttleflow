@@ -571,9 +571,9 @@ class Run:
                     if delay and self.phase == "running":
                         self.cv.wait(min(delay, 1))
                         continue
-                if self.phase != "running":
-                    break
-                self.now = moment
+                    if self.phase != "running":
+                        break
+                    self.now = moment
                 self.clock()
                 while self.heap and self.heap[0][0] == moment and self.phase == "running" and not self.check_deadline():
                     _, _, kind, value = heapq.heappop(self.heap)

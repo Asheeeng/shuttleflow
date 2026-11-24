@@ -2,15 +2,19 @@
   const base = window.BACKEND_URL || window.location.origin;
   const api = base + '/api';
   let csrfToken = '';
+  let currentRead = 0;
 
   async function readSession(guest) {
-    const response = await fetch(api + '/auth/session' + (guest ? '?guest=true' : ''), { credentials: 'same-origin' });
+    const read = ++currentRead;
+    const response = await fetch(api + '/auth/session' + (guest ? '?guest=true' : ''), { credentials: 'same-origin', cache: 'no-store' });
     const json = await response.json();
     if (!response.ok || json.code !== 200) throw new Error(json.msg || '无法读取登录状态');
     const data = json.data || {};
-    csrfToken = data.csrfToken || '';
-    window.SHUTTLE_CSRF = csrfToken;
-    window.SHUTTLE_SESSION = data;
+    if (read === currentRead) {
+      csrfToken = data.csrfToken || '';
+      window.SHUTTLE_CSRF = csrfToken;
+      window.SHUTTLE_SESSION = data;
+    }
     return data;
   }
 
@@ -37,6 +41,8 @@
         window.location.replace('login.html?role=' + (role === 'ADMIN' ? 'admin' : 'driver') + '&next=' + encodeURIComponent(next));
         return;
       }
+      // operation.js also checks the session on load; Vue must use this verified snapshot.
+      window.SHUTTLE_SESSION = session;
       app.mount('#app');
     } catch (error) {
       window.location.replace('login.html?role=' + (role === 'ADMIN' ? 'admin' : 'driver'));

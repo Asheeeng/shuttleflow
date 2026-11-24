@@ -31,6 +31,8 @@ public class SessionHandshakeInterceptor implements HandshakeInterceptor {
         HttpServletRequest servlet = ((ServletServerHttpRequest) request).getServletRequest();
         HttpSession session = servlet.getSession(false);
         if (session == null || session.getAttribute(AuthSessionService.ROLE) == null) return false;
+        attributes.put("shuttleHttpSession", session);
+        attributes.put("shuttleHttpSessionId", session.getId());
         attributes.put("shuttleRole", session.getAttribute(AuthSessionService.ROLE));
         attributes.put("shuttleUserId", session.getAttribute(AuthSessionService.ID));
         if ("DRIVER".equals(session.getAttribute(AuthSessionService.ROLE))) {

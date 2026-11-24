@@ -23,6 +23,7 @@ public class SessionAuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
         String path = request.getRequestURI();
+        if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
         if (!path.startsWith("/api/")) return true;
         if (path.equals("/api/driver/login") || path.equals("/api/admin/login")) return true;
         if (path.equals("/api/passenger/login")) return true;

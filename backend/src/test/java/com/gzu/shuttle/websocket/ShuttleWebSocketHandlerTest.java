@@ -3,6 +3,10 @@ package com.gzu.shuttle.websocket;
 import static org.mockito.Mockito.*;
 import java.util.HashMap;
 import java.util.Map;
+import com.gzu.shuttle.service.AuthSessionService;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PingMessage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.socket.WebSocketSession;
@@ -40,11 +44,29 @@ class ShuttleWebSocketHandlerTest {
         verify(admin, times(1)).sendMessage(any());
     }
 
+    @Test
+    void heartbeatKeepsIdleConnectionOpenAndStopsAfterHttpLogout() throws Exception {
+        WebSocketSession admin = session("idle", "ADMIN", 4L, null, null);
+        ShuttleWebSocketHandler handler = new ShuttleWebSocketHandler();
+        handler.afterConnectionEstablished(admin);
+        handler.heartbeat();
+        verify(admin).sendMessage(isA(PingMessage.class));
+        ((MockHttpSession) admin.getAttributes().get("shuttleHttpSession")).invalidate();
+        ShuttleWebSocketHandler.broadcast("task_assigned", map("vehicleId", 9L));
+        verify(admin, times(1)).sendMessage(any());
+        verify(admin).close(isA(CloseStatus.class));
+    }
+
     private WebSocketSession session(String id, String role, Long userId, Long vehicleId, Long lineId) {
         WebSocketSession session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn(id);
         when(session.isOpen()).thenReturn(true);
         Map<String, Object> attributes = new HashMap<String, Object>();
+        MockHttpSession http = new MockHttpSession();
+        http.setAttribute(AuthSessionService.ROLE, role);
+        http.setAttribute(AuthSessionService.ID, userId);
+        attributes.put("shuttleHttpSession", http);
+        attributes.put("shuttleHttpSessionId", http.getId());
         attributes.put("shuttleRole", role);
         attributes.put("shuttleUserId", userId);
         attributes.put("shuttleVehicleId", vehicleId);
