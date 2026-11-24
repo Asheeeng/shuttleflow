@@ -1,5 +1,7 @@
 # 香港 VPS V1.3 隔离部署
 
+> 本目录旧 install.sh、finish.sh、public_acceptance.py 和双栈配置仅用于追溯早期隔离 VPS；不要用于 V1.3.1 正式站。当前部署见 [V1.3.1 正式部署验收](../../docs/deploy/V1.3.1正式部署验收报告.md)。
+
 独立 HTTPS 域名为 `v13.shuttleflow-gzu.duckdns.org`。安装需要已验证的 SSH 主机及交互式 sudo，入口和应用使用两个独立的新密码。交付包带 Git SHA 和文件校验清单。
 
 ## 服务布局

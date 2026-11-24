@@ -1,5 +1,11 @@
 # 校园摆渡车站点客流上报与AI智能动态调度系统
 
+## V1.3.1 正式站
+
+两个 HTTPS 域名指向同一套 Spring Boot、MySQL、Redis 和 FastAPI。乘客可注册或使用游客会话；司机和管理端走应用身份认证、服务端角色校验和 CSRF。正式站不使用共享的 HTTP Basic 密码。
+
+算法实验通过管理员工作台调用独立 Python 内存进程，使用线路快照和虚拟事件。实验只写独立 JSON 档案，不写正式业务库、Redis 或在线 AI。对外服务状态见 [V1.3.1 部署验收](docs/deploy/V1.3.1正式部署验收报告.md)，代码设计见 [当前系统设计](docs/design-doc.md)。
+
 ## 中期检查版本
 
 本次稳定版本对应标签 `v1.3.0-midterm`。中期检查涵盖乘客、司机、管理台、智能调度和运营仿真。代码托管在 [GitHub](https://github.com/Asheeeng/shuttleflow) 和 [GitCode](https://gitcode.com/susuis/shuttleflow)；同步记录、回归结果和已知边界见 [中期检查进度说明](docs/中期检查进度说明.md)。
@@ -118,7 +124,7 @@ $env:SHUTTLE_AI_SERVICE_TOKEN = [Convert]::ToBase64String([Security.Cryptography
 
 ## V1.3 运营仿真工作台
 
-正式站候选方案使用独立 Python 内存实验。管理员沿用工作台配置客流、车辆并比较策略，实验不注册业务账号或写入正式记录。部署边界与验收见 [V1.3 单栈升级报告](docs/deploy/V1.3单栈升级与算法实验验收.md)。原本机 HTTP 联调和真人测试方式保留在 [运营仿真工作台使用说明](docs/V1.3运营仿真工作台使用说明.md)，仅临时测试环境使用。
+正式站使用独立 Python 内存实验。管理员沿用工作台配置客流、车辆并比较策略，实验不注册业务账号或写入正式记录。部署边界与验收见 [V1.3 单栈升级报告](docs/deploy/V1.3单栈升级与算法实验验收.md)。原本机 HTTP 联调和真人测试方式保留在 [运营仿真工作台使用说明](docs/V1.3运营仿真工作台使用说明.md)，仅临时测试环境使用。
 
 ## 后续迭代项（非MVP）
 - 卡尔曼滤波融合（多源观测+置信度）
