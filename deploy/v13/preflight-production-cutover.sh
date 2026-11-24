@@ -3,7 +3,11 @@
 set -Eeuo pipefail
 umask 077
 [[ $EUID -eq 0 ]] || { echo '请在已登录的 VPS SSH 终端用 sudo 执行。' >&2; exit 1; }
-[[ $# -eq 1 ]] || { echo '请输入当前会话的 SSH_CONNECTION 参数。' >&2; exit 1; }
+backup_only=0
+if [[ ${2:-} == --backup-only ]]; then backup_only=1; fi
+[[ $# -eq 1 || ( $# -eq 2 && $backup_only -eq 1 ) ]] || {
+  echo '请传入当前 SSH_CONNECTION，可加 --backup-only（不改 Fail2ban）。' >&2; exit 1;
+}
 source_ip="$(python3 - "$1" <<'PY'
 import ipaddress, sys
 src, sport, dst, dport = sys.argv[1].split()
@@ -120,6 +124,11 @@ done
 mysqladmin --no-defaults -uroot --protocol=socket --socket="$restore_dir/mysql.sock" shutdown >/dev/null 2>&1
 wait "$restore_pid"
 restore_pid=''
+if (( backup_only )); then
+  head -n 2 "$backup/inventory.txt"
+  printf '双库恢复演练已通过。备份校验清单：%s/SHA256SUMS\n未修改 Fail2ban 或网站。\n' "$backup"
+  exit 0
+fi
 phase='Fail2ban 配置测试和启用'
 journalctl -q -u ssh.service -o cat --since '1 day ago' | awk '/Accepted publickey/ { found=1 } END { exit !found }'
 override=/etc/fail2ban/jail.d/99-shuttle-sshd-journal.local

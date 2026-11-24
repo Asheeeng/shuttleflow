@@ -1,0 +1,26 @@
+[Unit]
+Description=ShuttleFlow isolated operations experiment
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/opt/shuttle-v13/current
+EnvironmentFile=/etc/shuttle-v13/experiment.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=SHUTTLE_EXPERIMENT_CATALOG=/opt/shuttle-v13/current/backend/src/main/resources/sql/init.sql
+Environment=SHUTTLE_EXPERIMENT_DIR=/var/lib/shuttle-experiment
+StateDirectory=shuttle-experiment
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3 -m simulation.experiment_server
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+MemoryMax=128M
+CPUQuota=50%
+TasksMax=24
+TimeoutStopSec=15
+RestrictAddressFamilies=AF_INET
+IPAddressDeny=any
+IPAddressAllow=localhost
+InaccessiblePaths=-/etc/shuttleflow -/etc/shuttle-v13 -/var/lib/shuttle-v13 -/var/lib/mysql

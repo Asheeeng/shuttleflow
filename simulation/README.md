@@ -70,3 +70,8 @@ mvn -f backend/pom.xml -s maven_settings.xml -Dtest=TaskServiceDispatchTest,Surg
 ```bash
 bash simulation/headless_browser_smoke.sh
 ```
+
+## 正式站候选方案：独立内存算法实验
+
+`python3 simulation/runtime.py start --lab --run-dir /private/tmp/shuttle-lab-unique`
+在备用回环端口运行正式模式的验收版（Java 18090、AI 18010、Redis 16389、实验 18002），只新建本机测试 MySQL 3308 的随机库。启动后可用管理员访问 `http://127.0.0.1:18090/simulation.html`；引用该次受限 `app.env` 后运行 `python3 -m simulation.acceptance_experiment`。结束用同一 `--run-dir` 和 `stop` 清理。线上运行实验 unit 本身不需要 MySQL、Redis 或 FastAPI 凭据。旧 HTTP 联调模式的 `start` 不允许部署到正式站。

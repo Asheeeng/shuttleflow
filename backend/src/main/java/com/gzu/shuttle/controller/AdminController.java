@@ -386,6 +386,7 @@ public class AdminController {
 
     @PostMapping("/ai/kalman")
     public Result<Map<String, Object>> aiKalman(@RequestBody Map<String, Object> body) {
+        if (!simulationEnabled) return Result.fail(404, "模拟观测仅可在临时测试环境录入");
         Long stationId = Long.valueOf(body.get("station_id").toString());
         Long lineId = Long.valueOf(body.get("line_id").toString());
         String direction = (String) body.getOrDefault("direction", "go");

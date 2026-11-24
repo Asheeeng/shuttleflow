@@ -12,7 +12,7 @@
     completed:'已完成', stopped:'已停止', error:'运行失败', ready:'待发车', dwell:'停站', moving:'行驶中',
     reserve:'待命', manual:'人工驾驶', fault:'故障', withdrawn:'退出运营', interrupted:'未完成行程',
     created:'创建', assigned:'派车', accepted:'接单', executing:'执行', rejected:'拒单',
-    reassigned:'改派', escalated:'升级', yellow:'黄色', orange:'橙色', red:'红色'
+    reassigned:'改派', escalated:'升级', yellow:'黄色', orange:'橙色', red:'红色', prior:'课表先验'
   };
   const esc = value => String(value ?? '—').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]);
   const option = (value, name) => `<option value="${esc(value)}">${esc(name)}</option>`;
@@ -43,6 +43,7 @@
   let tab = 'overview';
   let replay = null;
   let mounted = false;
+  let isolated = false;
   let loading = false;
   const defaultFleet = {lineId:1, direction:'go', count:3, capacity:13, initialStation:0, initialLoad:0, headway:150, travel:0, dwell:18, manual:0};
   const presetFleet = {
@@ -53,6 +54,8 @@
   const select = (label, name, entries) => `<label>${label}<select name="${name}">${entries}</select></label>`;
 
   async function api(path, payload) {
+    if(isolated)path=path.replace('/api/operation/view','/api/admin/experiment/state')
+      .replace('/api/admin/operation/control','/api/admin/experiment/control');
     const response = await fetch(path, payload ? {method:'POST', headers:window.ShuttleAuth.headers({'Content-Type':'application/json'}),body:JSON.stringify(payload)} : {});
     const result = await response.json();
     if (!response.ok || result.code !== 200) throw new Error(result.msg || '仿真接口不可用');
@@ -67,7 +70,7 @@
       ${select('方向','direction',option('go','去程')+option('back','返程'))}
       ${select('初始站','initialStation',option(0,'该方向首站'))}
       ${field('车辆数','count',data.count)}${field('座位','capacity',data.capacity)}
-      ${field('初始载客','initialLoad',data.initialLoad)}${field('人工车辆数','manual',data.manual)}
+      ${field('初始载客','initialLoad',data.initialLoad)}${isolated?'<input name="manual" type="hidden" value="0">':field('人工车辆数','manual',data.manual)}
       ${field('发车间隔（秒）','headway',data.headway)}
       ${field('站间秒数（0 = 线路配置）','travel',data.travel)}
       ${field('停站（秒）','dwell',data.dwell)}</div>`;
@@ -171,7 +174,7 @@
     const title=full?'运营仿真控制台':role==='admin'?'运营仿真大屏':role==='driver'?'仿真行程与上下客预测':'仿真车辆位置与到站时间';
     root.innerHTML = `<header class="op-head">
       <div class="op-bar"><div class="op-title"><span class="sf-mark" aria-hidden="true">SF</span><div><h2>${title}</h2>
-      <p class="op-note">车辆位置按线路进度推算</p></div></div><span class="op-badge">本机隔离仿真</span></div>
+      <p class="op-note">${isolated?'仅使用虚拟乘客、车辆与时钟，不写正式业务数据。':'车辆位置按线路进度推算'}</p></div></div><span class="op-badge">本机隔离仿真</span></div>
       <div class="op-status-row"><div class="op-status" role="status" data-status></div>
       ${role==='admin'?'<a class="btn btn-primary op-action" href="simulation.html">打开运营仿真控制台</a>':''}
       ${full?`<div class="op-actions">${Object.entries({start:'开始',pause:'暂停',resume:'继续',stop:'停止',reset:'重置视图',save:'保存配置'}).map(([key,label])=>
@@ -282,7 +285,7 @@
         if(i>=0)estimate.push([x(i),y(p.load)]);
       }
     }
-    return panel('全程载客变化', `<p class="op-note">实线为离站实报，蓝色虚线为预计载客，红色虚线为核载上限。</p>
+    return panel('全程载客变化', `<p class="op-note">实线为${isolated?'模拟离站记录':'离站实报'}，蓝色虚线为预计载客，红色虚线为核载上限。</p>
       <div class="op-scroll" tabindex="0" role="region" aria-label="可横向滚动的载客图">
       <svg width="${width}" height="${height}" role="img" aria-label="实际与预测载客量曲线">
       <line class="op-capacity-line" x1="36" y1="28" x2="${width-25}" y2="28"/>
@@ -362,7 +365,7 @@
     return panel('逐站运行记录',table(['站点','计划到站','实际到站','实际离站','下客','上客','离站载客','离站剩余候车','累计距离'],
       trip.stops.map(stop=>[esc(stop.name),clock(stop.planned),clock(stop.arrived),clock(stop.departed),stop.alighted,stop.boarded,
         stop.departed===null?'—':esc(stop.load),esc(stop.waiting),stop.distance+' m'])))+
-      plot(trip,car)+panel('区间载客热力图',`<p class="op-note">离站实报 · 绿色 &lt;70% · 黄色 70–89% · 红色 ≥90%</p>
+      plot(trip,car)+panel('区间载客热力图',`<p class="op-note">${isolated?'模拟离站记录':'离站实报'} · 绿色 &lt;70% · 黄色 70–89% · 红色 ≥90%</p>
       ${table(['行程与车辆',...route.stops.slice(0,-1).map((_,i)=>`${i+1}→${i+2}`)],
       routeTrips.slice(-20).map(item=>[esc(item.id+' · '+item.plate),...item.stops.slice(0,-1).map(stop=>
         stop.departed===null||stop.load===null?'—':`<span class="op-load ${loadLevel(stop.load/item.capacity)}">${stop.load}/${item.capacity}</span>`)]))}`);
@@ -448,13 +451,15 @@
   }
 
   function comparisonMarkup(history) {
-    if(!history.length)return panel('同配置策略对比 · 真实业务结果',empty('完成一次运行后，这里会显示对应策略的结果。'));
+    const title=isolated?'同配置策略对比 · 模拟客流':'同配置策略对比 · HTTP 集成测试';
+    if(!history.length)return panel(title,empty('完成一次运行后，这里会显示对应策略的结果。'));
     const key=entry=>JSON.stringify({...entry.config,policy:null});
     const group=history.filter(entry=>key(entry)===key(history[0]));
     const unique=[...new Map(group.reverse().map(entry=>[entry.config.policy,entry])).values()];
-    return panel('同配置策略对比 · 真实业务结果', `<p class="op-note">保持车队、客流与种子一致，分别运行三个策略。此处显示最近配置的完成记录。</p>
-      ${table(['策略','运行','签到','上车','剩余候车','取消','平均候车（秒）'],unique.map(entry=>
-        [esc(stateOf(entry.config.policy)),esc(entry.runId),...['checkins','boarded','waiting','cancelled','averageWait'].map(k=>esc(entry.metrics[k]))]))}`, 'op-dispatch');
+    return panel(title, `<p class="op-note">保持车队、客流与种子一致，分别运行三个策略。此处显示最近配置的完成记录。</p>
+      ${table(['策略','运行','签到','上车','剩余候车','取消','平均候车（秒）',...(isolated?['P95（秒）','峰值排队','运力利用率','完成任务']:[])],unique.map(entry=>
+        [esc(stateOf(entry.config.policy)),esc(entry.runId),...['checkins','boarded','waiting','cancelled','averageWait',
+          ...(isolated?['p95Wait','peakWaiting','seatUtilization','tasksCompleted']:[])].map(k=>esc(entry.metrics[k]))]))}`, 'op-dispatch');
   }
 
   function bindReplay(trip, redraw) {
@@ -513,6 +518,14 @@
         root.innerHTML=panel('运营仿真控制台','<p class="op-empty" role="status">正在加载运营数据…</p>');
         root.hidden=false;
       }
+      if(full) {
+        const state=await api('/api/admin/experiment/state');
+        isolated=state.enabled===true;
+        if(isolated) {
+          document.getElementById('op-panel-advanced').innerHTML=
+            '<summary>高级实验 · 算法边界</summary><p>内存引擎对照候车阈值、CUSUM、课表先验及 ETA 综合成本；卡尔曼与多车分配演示保留在临时集成测试环境，不向正式 AI 写入模拟观测。</p>';
+        }
+      }
       await refresh();
       loading=false;
       if(root.hidden)return;
@@ -525,7 +538,7 @@
         };
         socket.onclose=()=>{timer=setTimeout(connect,2500);};
       };
-      connect();
+      if(!isolated)connect();
       const poll=setInterval(()=>{if(!(tab==='vehicles'&&historyRun))refresh();},3500);
       const playback=setInterval(()=>{
         if(!replay?.playing)return;
@@ -539,7 +552,9 @@
         clearInterval(poll);clearInterval(playback);clearTimeout(timer);
         if(socket){socket.onclose=null;socket.close();}
       },{once:true});
-    } catch (_) { /* Production and unsigned pages leave this local-only panel hidden. */ }
+    } catch (error) {
+      if(full&&loading) root.innerHTML=panel('运营仿真控制台',empty(error.message));
+    }
   }
   if(role==='passenger') setTimeout(open,500); else open();
 })();

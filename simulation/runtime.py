@@ -17,6 +17,7 @@ DEFAULT_RUN_DIR = pathlib.Path("/private/tmp/shuttleflow-v13-runtime-3308")
 AI_VENV = ROOT / "simulation" / ".venv"
 MYSQL_TEST_PORT, REDIS_PORT, AI_PORT, JAVA_PORT = 3308, 16379, 18000, 18080
 OPERATION_PORT = 18001
+EXPERIMENT_PORT = 18002
 
 
 def port_available(port: int) -> bool:
@@ -195,12 +196,20 @@ def launch_services(run_dir: pathlib.Path, env: dict[str, str], ai_executable: p
                        "SHUTTLE_BACKEND_API_URL": f"http://127.0.0.1:{JAVA_PORT}/api"})
         start_process(run_dir, "ai", [str(ai_executable), "-m", "uvicorn", "main:app", "--host", "127.0.0.1",
                                        "--port", str(AI_PORT)], cwd=ROOT / "ai-service", env=ai_env)
-        operation = start_process(run_dir, "operation", [str(ai_executable), "-m", "simulation.operation_server"],
-                                  cwd=ROOT, env=env)
+        lab = env.get("SHUTTLE_EXPERIMENT_ENABLED") == "true"
+        module, port = ("experiment_server", EXPERIMENT_PORT) if lab else ("operation_server", OPERATION_PORT)
+        worker_env = env if not lab else {
+            "PATH": env.get("PATH", os.defpath),
+            "SHUTTLE_EXPERIMENT_TOKEN": env["SHUTTLE_EXPERIMENT_TOKEN"],
+            "SHUTTLE_EXPERIMENT_DIR": str(run_dir / "experiments"),
+            "SHUTTLE_EXPERIMENT_CATALOG": str(ROOT / "backend/src/main/resources/sql/init.sql"),
+        }
+        operation = start_process(run_dir, "operation", [str(ai_executable), "-m", "simulation."+module],
+                                  cwd=ROOT, env=worker_env)
         for _ in range(30):
             if operation.poll() is not None:
                 raise RuntimeError(f"运营进程启动失败；日志：{run_dir / 'logs/operation.log'}")
-            if not port_available(OPERATION_PORT):
+            if not port_available(port):
                 break
             time.sleep(0.1)
         else:
@@ -220,14 +229,21 @@ def launch_services(run_dir: pathlib.Path, env: dict[str, str], ai_executable: p
         raise
 
 
-def start(run_dir: pathlib.Path, mysql_root_cnf: pathlib.Path) -> int:
+def env_overrides(path, env):
+    existing = {line[7:].split("=", 1)[0] for line in path.read_text().splitlines() if line.startswith("export ")}
+    return {key: env[key] for key in existing | {"SHUTTLE_EXPERIMENT_ENABLED", "SHUTTLE_EXPERIMENT_TOKEN",
+            "SHUTTLE_CUSUM_SCHEDULER_ENABLED", "SHUTTLE_DISPATCH_COURSE_PREPOSITION_ENABLED",
+            "SHUTTLE_SIMULATION_ENABLED", "SHUTTLE_OPERATION_ENABLED"}}
+
+
+def start(run_dir: pathlib.Path, mysql_root_cnf: pathlib.Path, lab=False) -> int:
     if run_dir.exists():
         raise SystemExit(f"隔离目录已存在：{run_dir}。为防覆盖，请使用新的--run-dir或先检查旧实例。")
     if not mysql_root_cnf.is_file() or (mysql_root_cnf.stat().st_mode & 0o077):
         raise SystemExit("需要权限0600的本机独立测试MySQL凭据文件；不要使用VPS或生产库账号。")
     if port_available(MYSQL_TEST_PORT):
         raise SystemExit("本机独立MySQL测试端口3308不可用；停止，不会连接3306或其他实例。")
-    for port in (REDIS_PORT, AI_PORT, JAVA_PORT, OPERATION_PORT):
+    for port in (REDIS_PORT, AI_PORT, JAVA_PORT, EXPERIMENT_PORT if lab else OPERATION_PORT):
         if not port_available(port):
             raise SystemExit(f"本机端口{port}已被占用；停止，不会连接或修改其服务。")
     for name in ("mysql", "redis-server", "redis-cli", "mvn", "java"):
@@ -247,6 +263,15 @@ def start(run_dir: pathlib.Path, mysql_root_cnf: pathlib.Path) -> int:
         if line.startswith("export ") and "=" in line:
             key, raw = line[7:].split("=", 1)
             env[key] = shlex.split(raw)[0] if raw else ""
+    if lab:
+        env.update({"SERVER_PORT": str(JAVA_PORT), "SHUTTLE_REDIS_PORT": str(REDIS_PORT),
+                    "SHUTTLE_AI_SERVICE_URL": f"http://127.0.0.1:{AI_PORT}",
+                    "SHUTTLE_CORS_ALLOWED_ORIGINS": f"http://127.0.0.1:{JAVA_PORT}",
+                    "SHUTTLE_SIMULATION_ENABLED": "false", "SHUTTLE_OPERATION_ENABLED": "false",
+                    "SHUTTLE_EXPERIMENT_ENABLED": "true", "SHUTTLE_CUSUM_SCHEDULER_ENABLED": "true",
+                    "SHUTTLE_DISPATCH_COURSE_PREPOSITION_ENABLED": "true",
+                    "SHUTTLE_EXPERIMENT_TOKEN": secrets.token_urlsafe(32)})
+        write_env(run_dir / "app.env", env_overrides(run_dir / "app.env", env))
     launch_services(run_dir, env, ai_executable)
     print(f"本机隔离仿真环境已启动：{run_dir}")
     print(f"新测试库={db_name}；Java=127.0.0.1:{JAVA_PORT}；AI=127.0.0.1:{AI_PORT}；独立测试MySQL=127.0.0.1:{MYSQL_TEST_PORT}；仿真Redis=127.0.0.1:{REDIS_PORT}")
@@ -273,6 +298,8 @@ def refresh(run_dir: pathlib.Path) -> int:
     if (not db_name.startswith("shuttle_v13_sim_") or parsed.hostname != "127.0.0.1"
             or parsed.port != MYSQL_TEST_PORT or parsed.path.lstrip("/") != db_name):
         raise SystemExit("隔离库校验失败；停止，未重启应用。")
+    if values.get("SHUTTLE_EXPERIMENT_ENABLED") == "true":
+        raise SystemExit("使用 --lab 启动的环境不允许切换到旧 HTTP 仿真模式；请建立新测试目录。")
     ai_executable = ai_python(run_dir)
     values.update({"SHUTTLE_SIMULATION_ENABLED": "true",
                    "SHUTTLE_OPERATION_ENABLED": "true",
@@ -305,13 +332,17 @@ def stop(run_dir: pathlib.Path) -> int:
 
 
 def main() -> int:
+    global REDIS_PORT, AI_PORT, JAVA_PORT
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=("start", "refresh", "stop"))
     parser.add_argument("--run-dir", type=pathlib.Path, default=DEFAULT_RUN_DIR)
     parser.add_argument("--mysql-root-cnf", type=pathlib.Path,
                         default=ROOT.parent / "shuttleflow" / ".runtime" / "mysql-root.cnf")
+    parser.add_argument("--lab", action="store_true", help="用内存实验替换旧 HTTP 仿真")
     args = parser.parse_args()
-    if args.action == "start": return start(args.run_dir, args.mysql_root_cnf)
+    if args.lab:
+        REDIS_PORT, AI_PORT, JAVA_PORT = 16389, 18010, 18090
+    if args.action == "start": return start(args.run_dir, args.mysql_root_cnf, args.lab)
     if args.action == "refresh": return refresh(args.run_dir)
     return stop(args.run_dir)
 
